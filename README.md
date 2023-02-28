@@ -1,2 +1,2 @@
-# nuke_util
+# Nuke utilities
 Python nuke utilities to include in other repositories
