@@ -2,10 +2,15 @@
 # Office: VFX Artist - Senior Compositor
 # Website: vinavfx.com
 import os
+import platform
 import nuke
 import nukescripts
 
-user_path = os.path.expanduser('~')
+if platform.system() == 'Linux':
+    user_path = os.path.expanduser('~')
+else:
+    user_path = os.environ['USERPROFILE'].replace('\\', '/')
+
 nuke_path = '{0}/.nuke'.format(user_path)
 vina_path = nuke_path + '/vina_pipeline'
 
