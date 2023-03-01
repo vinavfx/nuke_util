@@ -33,7 +33,7 @@ def exec_function(function, args_data):
 
     executable = get_nuke_executable()
 
-    cmd = '{} -t {}'.format(executable, tmp_script_file)
+    cmd = '"{}" -t {}'.format(executable, tmp_script_file)
 
     p = subprocess.Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)

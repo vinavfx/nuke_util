@@ -72,12 +72,19 @@ def get_nuke_path():
 
 
 def get_nuke_executable():
-
     executable = '/opt/Nuke{}/nuke'.format(nuke.NUKE_VERSION_STRING)
 
-    if not os.path.isfile(executable):
-        executable = '/usr/local/Nuke{}/Nuke{}.{}'.format(
-            nuke.NUKE_VERSION_STRING, nuke.NUKE_VERSION_MAJOR, nuke.NUKE_VERSION_MINOR)
+    if os.path.isfile(executable):
+        return executable
+
+    executable = '/usr/local/Nuke{}/Nuke{}.{}'.format(
+        nuke.NUKE_VERSION_STRING, nuke.NUKE_VERSION_MAJOR, nuke.NUKE_VERSION_MINOR)
+
+    if os.path.isfile(executable):
+        return executable
+
+    executable = 'C:/Program Files/Nuke{}/Nuke{}.{}.exe'.format(
+        nuke.NUKE_VERSION_STRING, nuke.NUKE_VERSION_MAJOR, nuke.NUKE_VERSION_MINOR)
 
     return executable
 
