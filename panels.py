@@ -49,6 +49,7 @@ class panel_widget(QWidget):
 
         self.border = True
         self.prev_stacked_widget = None
+        self.hidden = False
 
     def remove_parents_margin(self):
         parents = []
@@ -77,16 +78,21 @@ class panel_widget(QWidget):
             pwidgt = widget.parent()
 
             if isinstance(pwidgt, QStackedWidget):
-                return pwidgt, widget
+                return pwidgt, widget, pwidgt.count()
 
         return None
 
     def hideEvent(self, event):
         super().hideEvent(event)
-        self.prev_stacked_widget = self.get_stacked_widget()
+
+        if not self.hidden:
+            self.prev_stacked_widget = self.get_stacked_widget()
+
+        self.hidden = True
 
     def showEvent(self, event):
         super().showEvent(event)
+        self.hidden = False
 
         self.remove_parents_margin()
 
@@ -94,12 +100,14 @@ class panel_widget(QWidget):
         if not stacked_widget:
             return
 
-        stacked_widget, _ = stacked_widget
-        prev_stacked_widget, prev_widget = self.prev_stacked_widget if self.prev_stacked_widget else [
-            None, None]
+        stacked_widget, _, tab_count = stacked_widget
 
-        if self.prev_stacked_widget == stacked_widget:
-            return
+        prev_stacked_widget, prev_widget, prev_tab_count = self.prev_stacked_widget if self.prev_stacked_widget else [
+            None, None, None]
+
+        if prev_stacked_widget == stacked_widget:
+            if prev_tab_count == tab_count:
+                return
 
         if prev_stacked_widget:
             prev_stacked_widget.removeWidget(prev_widget)
