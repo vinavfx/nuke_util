@@ -1,46 +1,33 @@
 # Author: Francisco Jose Contreras Cuevas
 # Office: VFX Artist - Senior Compositor
 # Website: vinavfx.com
-import os
-import inspect
 import nuke
-from nukescripts import panels
+from nukescripts import PythonPanel, registerPanel
 
-from PySide2.QtWidgets import QWidget, QStackedWidget
+from PySide2.QtWidgets import QWidget
 
 
-def init(panel_widget, label, reload=False):
-    module = inspect.getmodule(panel_widget)
-    if not module:
-        return
+class Panel(PythonPanel):
+    def __init__(self, label, name, widget):
+        PythonPanel.__init__(self, label, name)
 
-    def get_main_widget():
+        self.customKnob = nuke.PyCustom_Knob(
+            name, "", "__import__('nukescripts').panels.WidgetKnob({})".format(widget))
 
-        if not hasattr(module, 'main_widget'):
-            module.main_widget = None
+        self.addKnob(self.customKnob)
 
-        if reload:
-            del module.main_widget
-            module.main_widget = None
 
-        if not module.main_widget:
-            module.main_widget = panel_widget()
-
-        return module.main_widget
-
-    module.get_panel_widget = get_main_widget
-
-    get_panel_widget = '{}.get_panel_widget'.format(
-        module.__name__.replace('vina_pipeline.source', 'vina'))
-
+def init(widget_name, label):
     name = label.lower().replace(' ', '_')
 
-    registered = panels.registerWidgetAsPanel(
-        get_panel_widget, label, name, reload)
+    panel = Panel(label, name, widget_name)
 
-    if reload:
-        panel = nuke.getPaneFor(name)
-        registered.addToPane(panel)
+    def add_panel():
+        return panel.addToPane()
+
+    menu = nuke.menu('Pane')
+    menu.addCommand(label, add_panel)
+    registerPanel(name, add_panel)
 
 
 class panel_widget(QWidget):
@@ -67,47 +54,6 @@ class panel_widget(QWidget):
             except:
                 pass
 
-    def get_stacked_widget(self):
-        pwidgt = self
-
-        for _ in range(10):
-            if not pwidgt:
-                continue
-
-            widget = pwidgt
-            pwidgt = widget.parent()
-
-            if isinstance(pwidgt, QStackedWidget):
-                return pwidgt, widget, pwidgt.count()
-
-        return None
-
-    def hideEvent(self, event):
-        super().hideEvent(event)
-
-        if not self.hidden:
-            self.prev_stacked_widget = self.get_stacked_widget()
-
-        self.hidden = True
-
     def showEvent(self, event):
         super().showEvent(event)
-        self.hidden = False
-
         self.remove_parents_margin()
-
-        stacked_widget = self.get_stacked_widget()
-        if not stacked_widget:
-            return
-
-        stacked_widget, _, tab_count = stacked_widget
-
-        prev_stacked_widget, prev_widget, prev_tab_count = self.prev_stacked_widget if self.prev_stacked_widget else [
-            None, None, None]
-
-        if prev_stacked_widget == stacked_widget:
-            if prev_tab_count == tab_count:
-                return
-
-        if prev_stacked_widget:
-            prev_stacked_widget.removeWidget(prev_widget)
