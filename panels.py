@@ -6,8 +6,7 @@ import inspect
 import nuke
 from nukescripts import panels
 
-from PySide2.QtWidgets import QWidget
-from PySide2.QtCore import QEvent
+from PySide2.QtWidgets import QWidget, QStackedWidget
 
 
 def init(panel_widget, label, reload=False):
@@ -49,6 +48,7 @@ class panel_widget(QWidget):
         QWidget.__init__(self, parent)
 
         self.border = True
+        self.prev_stacked_widget = None
 
     def remove_parents_margin(self):
         parents = []
@@ -66,7 +66,40 @@ class panel_widget(QWidget):
             except:
                 pass
 
+    def get_stacked_widget(self):
+        pwidgt = self
+
+        for _ in range(10):
+            if not pwidgt:
+                continue
+
+            widget = pwidgt
+            pwidgt = widget.parent()
+
+            if isinstance(pwidgt, QStackedWidget):
+                return pwidgt, widget
+
+        return None
+
+    def hideEvent(self, event):
+        super().hideEvent(event)
+        self.prev_stacked_widget = self.get_stacked_widget()
+
     def showEvent(self, event):
+        super().showEvent(event)
+
         self.remove_parents_margin()
 
-        return QWidget.showEvent(self, event)
+        stacked_widget = self.get_stacked_widget()
+        if not stacked_widget:
+            return
+
+        stacked_widget, _ = stacked_widget
+        prev_stacked_widget, prev_widget = self.prev_stacked_widget if self.prev_stacked_widget else [
+            None, None]
+
+        if self.prev_stacked_widget == stacked_widget:
+            return
+
+        if prev_stacked_widget:
+            prev_stacked_widget.removeWidget(prev_widget)
