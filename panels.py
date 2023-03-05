@@ -2,22 +2,22 @@
 # Office: VFX Artist - Senior Compositor
 # Website: vinavfx.com
 import nuke
-from nukescripts import PythonPanel, registerPanel
 
 from PySide2.QtWidgets import QWidget
 
 
-class Panel(PythonPanel):
-    def __init__(self, label, name, widget):
-        PythonPanel.__init__(self, label, name)
-
-        self.customKnob = nuke.PyCustom_Knob(
-            name, "", "__import__('nukescripts').panels.WidgetKnob({})".format(widget))
-
-        self.addKnob(self.customKnob)
-
-
 def init(widget_name, label):
+    from nukescripts import PythonPanel, registerPanel
+
+    class Panel(PythonPanel):
+        def __init__(self, label, name, widget):
+            PythonPanel.__init__(self, label, name)
+
+            self.customKnob = nuke.PyCustom_Knob(
+                name, "", "__import__('nukescripts').panels.WidgetKnob({})".format(widget))
+
+            self.addKnob(self.customKnob)
+
     name = label.lower().replace(' ', '_')
 
     panel = Panel(label, name, widget_name)
