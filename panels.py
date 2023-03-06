@@ -5,6 +5,7 @@ import nuke
 
 from PySide2.QtWidgets import QWidget
 
+nuke.panels = {}
 
 def init(widget_name, label):
     from nukescripts import PythonPanel, registerPanel
@@ -15,6 +16,8 @@ def init(widget_name, label):
 
             self.customKnob = nuke.PyCustom_Knob(
                 name, "", "__import__('nukescripts').panels.WidgetKnob({})".format(widget))
+
+            nuke.panels[name] = lambda: self.customKnob.getObject().widget
 
             self.addKnob(self.customKnob)
 
