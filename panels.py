@@ -3,7 +3,7 @@
 # Website: vinavfx.com
 import nuke
 
-from PySide2.QtWidgets import QWidget, QStackedWidget
+from PySide2.QtWidgets import QWidget, QStackedWidget, QApplication
 
 nuke.panels = {}
 
@@ -35,8 +35,12 @@ def init(widget_name, label, stacked_widget=None):
     registerPanel(name, add_panel)
 
     if stacked_widget:
+        last_focus_widget = QApplication.focusWidget()
         stacked_widget.setFocus()
         add_panel()
+
+        if last_focus_widget:
+            last_focus_widget.setFocus()
 
 
 def close_panel(panel_name):
