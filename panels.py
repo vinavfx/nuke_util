@@ -104,6 +104,7 @@ class float_panel_widget(QWidget):
     def showEvent(self, event):
         super().showEvent(event)
         self.activateWindow()
+        self.setFocus()
 
     def keyPressEvent(self, event):
         super().keyPressEvent(event)
