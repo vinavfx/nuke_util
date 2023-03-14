@@ -105,6 +105,11 @@ class float_panel_widget(QWidget):
         super().showEvent(event)
         self.activateWindow()
 
+    def keyPressEvent(self, event):
+        super().keyPressEvent(event)
+        if event.key() == Qt.Key_Escape:
+            self.close()
+
 
 class panel_widget(QWidget):
     def __init__(self, parent=None):
