@@ -1,11 +1,15 @@
 # Author: Francisco Jose Contreras Cuevas
 # Office: VFX Artist - Senior Compositor
 # Website: vinavfx.com
+import inspect
 import nuke
 
+from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QWidget, QStackedWidget, QApplication
+from PySide2.QtGui import QScreen
 
 nuke.panels = {}
+nuke.float_panels = {}
 
 
 def init(widget_name, label, stacked_widget=None):
@@ -43,6 +47,13 @@ def init(widget_name, label, stacked_widget=None):
             last_focus_widget.setFocus()
 
 
+def init_float_panel(widget, name):
+    module = inspect.getmodule(widget)
+
+    module.main_widget = widget()
+    nuke.float_panels[name] = module.main_widget
+
+
 def close_panel(panel_name):
     if not panel_name in nuke.panels:
         return
@@ -73,6 +84,26 @@ def get_stacked_widget(widget):
             return pwidget, widget
 
     return None, None
+
+
+class float_panel_widget(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        self.setWindowFlags(Qt.Tool)
+
+    def center_window(self):
+        centerPoint = QScreen.availableGeometry(
+            QApplication.primaryScreen()).center()
+
+        fg = self.frameGeometry()
+        fg.moveCenter(centerPoint)
+
+        self.move(fg.topLeft())
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.activateWindow()
 
 
 class panel_widget(QWidget):
