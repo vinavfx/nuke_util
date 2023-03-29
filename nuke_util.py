@@ -12,7 +12,7 @@ else:
     user_path = os.environ['USERPROFILE'].replace('\\', '/')
 
 nuke_path = '{0}/.nuke'.format(user_path)
-vina_path = nuke_path + '/vina_pipeline'
+vina_path = nuke_path + '/vina_nuke'
 
 
 def get_connected_nodes(node):
