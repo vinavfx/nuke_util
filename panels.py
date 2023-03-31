@@ -8,8 +8,9 @@ from PySide2.QtCore import Qt
 from PySide2.QtWidgets import QWidget, QStackedWidget, QApplication
 from PySide2.QtGui import QScreen
 
-nuke.panels = {}
-nuke.float_panels = {}
+if not hasattr(nuke, 'panels'):
+    nuke.panels = {}
+    nuke.float_panels = {}
 
 
 def init(widget_name, label, stacked_widget=None):
