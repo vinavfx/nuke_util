@@ -2,5 +2,5 @@ from . import (
     nuke_util,
     media_util,
     panels,
-    exec
+    func_exec
 )
