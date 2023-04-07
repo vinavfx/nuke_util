@@ -89,7 +89,7 @@ def get_stacked_widget(widget):
 
 class float_panel_widget(QWidget):
     def __init__(self):
-        super().__init__()
+        super(float_panel_widget, self).__init__()
 
         self.setWindowFlags(Qt.Tool)
 
@@ -103,19 +103,19 @@ class float_panel_widget(QWidget):
         self.move(fg.topLeft())
 
     def showEvent(self, event):
-        super().showEvent(event)
+        super(float_panel_widget, self).showEvent(event)
         self.activateWindow()
         self.setFocus()
 
     def keyPressEvent(self, event):
-        super().keyPressEvent(event)
+        super(float_panel_widget, self).keyPressEvent(event)
         if event.key() == Qt.Key_Escape:
             self.close()
 
 
 class panel_widget(QWidget):
     def __init__(self, parent=None):
-        QWidget.__init__(self, parent)
+        super(panel_widget, self).__init__(parent)
 
         self.border = True
         self.prev_stacked_widget = None
@@ -138,5 +138,5 @@ class panel_widget(QWidget):
                 pass
 
     def showEvent(self, event):
-        super().showEvent(event)
+        super(panel_widget, self).showEvent(event)
         self.remove_parents_margin()
