@@ -89,6 +89,10 @@ def get_nuke_executable():
     return executable
 
 
+def get_nuke_plugins():
+    return os.path.dirname(get_nuke_executable()) + '/plugins'
+
+
 def declone(clone):
     if not clone.clones():
         return
