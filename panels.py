@@ -91,7 +91,7 @@ class float_panel_widget(QWidget):
     def __init__(self):
         super(float_panel_widget, self).__init__()
 
-        self.setWindowFlags(Qt.Tool)
+        self.setWindowFlags(Qt.Tool | Qt.WindowStaysOnTopHint)
 
     def center_window(self):
         centerPoint = QScreen.availableGeometry(
