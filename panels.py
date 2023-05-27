@@ -137,6 +137,9 @@ class panel_widget(QWidget):
             except:
                 pass
 
+    def updateValue(self):
+        return
+
     def showEvent(self, event):
         super(panel_widget, self).showEvent(event)
         self.remove_parents_margin()
