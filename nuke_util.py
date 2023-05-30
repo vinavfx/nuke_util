@@ -166,12 +166,10 @@ def get_dependency_all_nodes(force=False):
     for node in nuke.allNodes(recurseGroups=True):
         for i, inode in get_input_nodes(node):
 
-            key = inode.fullName()
-
-            if key in nodes:
-                nodes[key].append((i, node))
+            if inode in nodes:
+                nodes[inode].append((i, node))
             else:
-                nodes[key] = [(i, node)]
+                nodes[inode] = [(i, node)]
 
     dependency_all_nodes = nodes
     return nodes
@@ -181,8 +179,8 @@ def get_output_nodes(node, force=False):
 
     deps = get_dependency_all_nodes(force)
 
-    if node.fullName() in deps:
-        return deps[node.fullName()]
+    if node in deps:
+        return deps[node]
     else:
         return []
 
