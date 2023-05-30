@@ -37,17 +37,6 @@ def get_user_path():
     return user_path
 
 
-def get_input_nodes(node):
-    input_nodes = []
-
-    for i in range(node.inputs()):
-        _input = node.input(i)
-        if _input:
-            input_nodes.append((i, _input))
-
-    return input_nodes
-
-
 def get_vina_path():
     return vina_path
 
@@ -152,20 +141,51 @@ def duplicate_node(node, parent=None):
     return new_node
 
 
-def get_output_nodes(node):
-    nodes = []
+def get_input_nodes(node):
+    input_nodes = []
 
-    for onode in node.dependent():
-        for i in range(onode.inputs()):
+    for i in range(node.inputs()):
+        _input = node.input(i)
+        if _input:
+            input_nodes.append((i, _input))
 
-            inode = onode.input(i)
-            if not inode:
-                continue
+    return input_nodes
 
-            if inode.name() == node.name():
-                nodes.append((i, onode))
 
+dependency_all_nodes = None
+
+
+def get_dependency_all_nodes(force=False):
+    global dependency_all_nodes
+
+    if dependency_all_nodes and not force:
+        return dependency_all_nodes
+
+    nodes = {}
+
+    for node in nuke.allNodes(recurseGroups=True):
+        for i, inode in get_input_nodes(node):
+
+            key = inode.fullName()
+
+            if key in nodes:
+                nodes[key].append((i, node))
+            else:
+                nodes[key] = [(i, node)]
+
+    dependency_all_nodes = nodes
     return nodes
+
+
+def get_output_nodes(node, force=False):
+
+    deps = get_dependency_all_nodes(force)
+
+    if node.fullName() in deps:
+        return deps[node.fullName()]
+    else:
+        return []
+
 
 
 def add_key(knob, value, frame, dimension=0, interpolation=nuke.HORIZONTAL):
