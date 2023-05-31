@@ -92,6 +92,18 @@ def get_fullname(filename):
     return get_basename(filename)
 
 
+def nomenclature_separator(fullname):
+    prefix = fullname.split('_')[0]
+    sequence = fullname.split('_')[1]
+    shot = fullname.split('_')[2]
+    version = get_version_string(fullname)
+    task = fullname.split(version)[0].split(shot)[-1][:-1][1:]
+    padding = get_padding(fullname)
+    ext = get_extension(fullname)
+
+    return prefix, sequence, shot, task, version, padding, ext
+
+
 def get_padding_ext(filename):
     return get_padding(filename) + '.' + get_extension(filename)
 
