@@ -195,7 +195,8 @@ def add_key(knob, value, frame, dimension=0, interpolation=nuke.HORIZONTAL):
     curve.changeInterpolation([last_key], interpolation)
 
 
-def set_tile_color(node, h, s, l):
+def set_tile_color(node, hsl):
+    h, s, l = hsl
     rgb = hsl_to_rgb(h, s, l)
 
     r = int(rgb[0] * 255)
@@ -207,7 +208,8 @@ def set_tile_color(node, h, s, l):
     node['tile_color'].setValue(hex_colour)
 
 
-def set_font_color(node, h, s, l):
+def set_font_color(node, hsl):
+    h, s, l = hsl
     rgb = hsl_to_rgb(h, s, l)
 
     r = int(rgb[0] * 255)
