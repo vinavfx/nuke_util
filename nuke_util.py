@@ -155,7 +155,7 @@ def get_input_nodes(node):
 dependency_all_nodes = None
 
 
-def get_dependency_all_nodes(force=False):
+def get_dependency_all_nodes(force):
     global dependency_all_nodes
 
     if dependency_all_nodes and not force:
@@ -175,7 +175,7 @@ def get_dependency_all_nodes(force=False):
     return nodes
 
 
-def get_output_nodes(node, force=False):
+def get_output_nodes(node, force=True):
 
     deps = get_dependency_all_nodes(force)
 
