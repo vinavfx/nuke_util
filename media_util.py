@@ -94,10 +94,21 @@ def get_fullname(filename):
 
 def nomenclature_separator(fullname):
     prefix = fullname.split('_')[0]
-    sequence = fullname.split('_')[1]
-    shot = fullname.split('_')[2]
+
     version = get_version_string(fullname)
-    task = fullname.split(version)[0].split(shot)[-1][:-1][1:]
+
+    task = ''
+    for word in reversed(fullname.split(version)[0].split('_')):
+        if word.isdigit():
+            break
+
+        task = word + ' ' + task
+
+    task = task.strip().replace(' ', '_')
+
+    shot = fullname.split(task)[0][:-1].split('_')[-1]
+    sequence = fullname.split(shot + '_' + task)[0].split('_', 1)[-1][:-1]
+
     padding = get_padding(fullname)
     ext = get_extension(fullname)
 
