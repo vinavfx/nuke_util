@@ -93,7 +93,7 @@ def get_fullname(filename):
 
 
 def nomenclature_separator(fullname):
-    prefix = fullname.split('_')[0]
+    code = fullname.split('_')[0]
 
     version = get_version_string(fullname)
 
@@ -112,7 +112,7 @@ def nomenclature_separator(fullname):
     padding = get_padding(fullname)
     ext = get_extension(fullname)
 
-    return prefix, sequence, shot, task, version, padding, ext
+    return code, sequence, shot, task, version, padding, ext
 
 
 def get_padding_ext(filename):
