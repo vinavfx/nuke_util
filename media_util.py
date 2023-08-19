@@ -31,7 +31,7 @@ def get_version(filename):
     basename = os.path.basename(filename)
     current_version = basename.split('v')[-1].split('.')[0]
 
-    if current_version.isnumeric():
+    if current_version.isdigit():
         return int(current_version)
 
     return -1
@@ -41,7 +41,7 @@ def get_version_string(filename):
     basename = os.path.basename(filename)
     current_version = basename.split('v')[-1].split('.')[0].split('_')[0]
 
-    if current_version.isnumeric():
+    if current_version.isdigit():
         return 'v' + current_version
 
     return ''
