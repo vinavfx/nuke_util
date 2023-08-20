@@ -117,25 +117,15 @@ class panel_widget(QWidget):
     def __init__(self, parent=None):
         super(panel_widget, self).__init__(parent)
 
-        self.border = True
-        self.prev_stacked_widget = None
         self.hidden = False
 
     def remove_parents_margin(self):
-        parents = []
+        stacked_widget, _ = get_stacked_widget(self)
 
-        pwidgt = self
-        for _ in range(6):
-            pwidgt = pwidgt.parentWidget()
-            parents.append(pwidgt)
+        if not stacked_widget:
+            return
 
-        for widget in parents:
-            try:
-                if not self.border:
-                    widget.setStyleSheet('QWidget {border: none}')
-                widget.layout().setContentsMargins(0, 0, 0, 0)
-            except:
-                pass
+        stacked_widget.setStyleSheet('QScrollArea {border: none}')
 
     def updateValue(self):
         return
