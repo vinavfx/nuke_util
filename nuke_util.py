@@ -42,9 +42,19 @@ def get_vina_path():
 
 
 def get_topnode(node):
-    expr = 'full_name [topnode {}]'.format(node.fullName())
-    topnode_name = nuke.tcl(expr)
-    return nuke.toNode(topnode_name)
+    if not node:
+        return
+
+    topnode = node
+
+    for _ in range(100):
+        inode = topnode.input(0)
+        if not inode:
+            break
+
+        topnode = inode
+
+    return topnode
 
 
 def is_vina_gizmo(gizmo):
