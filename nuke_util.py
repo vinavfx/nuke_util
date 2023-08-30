@@ -15,7 +15,10 @@ nuke_path = '{0}/.nuke'.format(user_path)
 vina_path = nuke_path + '/vina_nuke'
 
 
-def get_connected_nodes(node):
+def get_connected_nodes(node, visited=None):
+    if visited is None:
+        visited = set()
+
     nodes = []
 
     for i in range(node.inputs()):
@@ -24,11 +27,10 @@ def get_connected_nodes(node):
         if not inode:
             continue
 
-        nodes.append(inode)
-
-        for n in get_connected_nodes(inode):
-            if not n in nodes:
-                nodes.append(n)
+        if inode not in visited:
+            visited.add(inode)
+            nodes.append(inode)
+            nodes.extend(get_connected_nodes(inode, visited))
 
     return nodes
 
@@ -161,9 +163,9 @@ def get_input_nodes(node):
     input_nodes = []
 
     for i in range(node.inputs()):
-        _input = node.input(i)
-        if _input:
-            input_nodes.append((i, _input))
+        inode = node.input(i)
+        if inode:
+            input_nodes.append((i, inode))
 
     return input_nodes
 
