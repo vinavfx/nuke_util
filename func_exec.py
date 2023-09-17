@@ -39,6 +39,4 @@ def exec_function(function, args_data):
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     _, _ = p.communicate()
 
-    p.terminate()
-
     os.remove(tmp_script_file)
