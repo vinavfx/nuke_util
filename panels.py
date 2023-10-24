@@ -5,7 +5,7 @@ import inspect
 import nuke
 
 from PySide2.QtCore import Qt
-from PySide2.QtWidgets import QWidget, QStackedWidget, QApplication
+from PySide2.QtWidgets import QWidget, QStackedWidget, QApplication, QDialog
 from PySide2.QtGui import QScreen
 
 if not hasattr(nuke, 'panels'):
@@ -87,7 +87,7 @@ def get_stacked_widget(widget):
     return None, None
 
 
-class float_panel_widget(QWidget):
+class float_panel_widget(QDialog):
     def __init__(self):
         super(float_panel_widget, self).__init__()
 
