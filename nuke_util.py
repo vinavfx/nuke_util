@@ -3,6 +3,7 @@
 # Website: vinavfx.com
 import os
 import platform
+import colorsys
 import nuke
 import nukescripts
 
@@ -203,7 +204,6 @@ def get_output_nodes(node, force=True):
         return []
 
 
-
 def add_key(knob, value, frame, dimension=0, interpolation=nuke.HORIZONTAL):
     knob.setAnimated()
     knob.setValueAt(value, frame, dimension)
@@ -215,7 +215,7 @@ def add_key(knob, value, frame, dimension=0, interpolation=nuke.HORIZONTAL):
 
 def set_tile_color(node, hsl):
     h, s, l = hsl
-    rgb = hsl_to_rgb(h, s, l)
+    rgb = colorsys.hsv_to_rgb(h, s, l)
 
     r = int(rgb[0] * 255)
     g = int(rgb[1] * 255)
@@ -228,7 +228,7 @@ def set_tile_color(node, hsl):
 
 def set_font_color(node, hsl):
     h, s, l = hsl
-    rgb = hsl_to_rgb(h, s, l)
+    rgb = colorsys.hsv_to_rgb(h, s, l)
 
     r = int(rgb[0] * 255)
     g = int(rgb[1] * 255)
@@ -257,29 +257,6 @@ def set_hex_color(node, hx, intensity=1.0, sat=1.0):
                      (r, g, b, 1), 16)
 
     node['tile_color'].setValue(hex_colour)
-
-
-def hsl_to_rgb(h, s, l):
-    def clamp(value, min_value, max_value):
-        return max(min_value, min(max_value, value))
-
-    def saturate(value):
-        return clamp(value, 0.0, 1.0)
-
-    def hue_to_rgb(h):
-        r = abs(h * 6.0 - 3.0) - 1.0
-        g = 2.0 - abs(h * 6.0 - 2.0)
-        b = 2.0 - abs(h * 6.0 - 4.0)
-        return saturate(r), saturate(g), saturate(b)
-
-    l /= 2.0
-
-    r, g, b = hue_to_rgb(h)
-    c = (1.0 - abs(2.0 * l - 1.0)) * s
-    r = (r - 0.5) * c + l
-    g = (g - 0.5) * c + l
-    b = (b - 0.5) * c + l
-    return r, g, b
 
 
 def get_absolute(filename):
