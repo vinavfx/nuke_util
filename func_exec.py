@@ -1,31 +1,37 @@
 # Author: Francisco Jose Contreras Cuevas
 # Office: VFX Artist - Senior Compositor
 # Website: vinavfx.com
+import base64
 import random
 import os
+import base64
 import json
 import subprocess
-import platform
 
-from .nuke_util import get_nuke_executable, get_user_path
+from .nuke_util import get_nuke_executable
 
 
-def exec_function(function, args_data):
+def exec_function(function, data):
 
-    if platform.system() == "Linux":
-        tmp_dir = '/tmp'
-    else:
-        tmp_dir = '{}/AppData/Local/Temp'.format(get_user_path())
+    tmp_script_file = '/tmp/submit_function_{}.py'.format(
+        int(random.random() * 1000000))
 
-    tmp_script_file = '{}/submit_function_{}.py'.format(
-        tmp_dir, int(random.random() * 1000000))
+    data_encoded = base64.b64encode(json.dumps(data).encode()).decode()
 
-    tmp_script = '{}\n{}\n{}\n'.format(
+    tmp_script = (
         'import json',
-        "data = json.loads('{}')".format(
-            json.dumps(args_data).replace('\\', '\\\\')),
-        '{}(data)'.format(function)
+        'import base64',
+        'data = "{}"'.format(data_encoded),
+        'data = base64.b64encode(json.dumps(data).encode()).decode()',
+        'print("__output__")',
+        'ret = {}(data)'.format(function),
+        'try:',
+        '   encoded = base64.b64encode(json.dumps(ret).encode()).decode()',
+        "   print('__return__{}'.format(encoded))",
+        'except: pass'
     )
+
+    tmp_script = '\n'.join(tmp_script)
 
     f = open(tmp_script_file, 'w')
     f.write(tmp_script)
@@ -37,6 +43,20 @@ def exec_function(function, args_data):
 
     p = subprocess.Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    _, _ = p.communicate()
+
+    output, _ = p.communicate()
+
+    try:
+        output_print = output.decode().split(
+            '__output__')[-1].strip().split('__return__')[0]
+        print(output_print)
+    except:
+        pass
+
+    try:
+        ret = output.decode().split('__return__')[-1]
+        return json.loads(base64.b64decode(ret.encode()).decode())
+    except:
+        pass
 
     os.remove(tmp_script_file)
