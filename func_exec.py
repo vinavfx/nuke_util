@@ -22,7 +22,7 @@ def exec_function(function, data):
         'import json',
         'import base64',
         'data = "{}"'.format(data_encoded),
-        'data = base64.b64encode(json.dumps(data).encode()).decode()',
+        'data = json.loads(base64.b64decode(data.encode()).decode())',
         'print("__output__")',
         'ret = {}(data)'.format(function),
         'try:',
@@ -44,7 +44,8 @@ def exec_function(function, data):
     p = subprocess.Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    output, _ = p.communicate()
+    output, erro = p.communicate()
+    print(erro.decode())
 
     try:
         output_print = output.decode().split(
