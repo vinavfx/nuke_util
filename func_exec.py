@@ -2,8 +2,8 @@
 # Office: VFX Artist - Senior Compositor
 # Website: vinavfx.com
 import base64
-import random
 import os
+import random
 import base64
 import json
 import subprocess
@@ -44,8 +44,8 @@ def exec_function(function, data):
     p = subprocess.Popen(
         cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    output, erro = p.communicate()
-    print(erro.decode())
+    output, _ = p.communicate()
+    os.remove(tmp_script_file)
 
     try:
         output_print = output.decode().split(
@@ -60,4 +60,4 @@ def exec_function(function, data):
     except:
         pass
 
-    os.remove(tmp_script_file)
+    return {}
