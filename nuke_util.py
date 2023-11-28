@@ -36,6 +36,20 @@ def get_connected_nodes(node, visited=None):
     return nodes
 
 
+def get_dependencies(node, visited=None):
+    # Similar a 'get_connected_nodes' pero este
+    # incluye los nodos con dependencias de expression
+    if visited is None:
+        visited = set()
+
+    visited.add(node)
+
+    for dep_node in node.dependencies():
+        get_dependencies(dep_node, visited)
+
+    return visited
+
+
 def get_user_path():
     return user_path
 
