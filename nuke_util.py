@@ -14,6 +14,7 @@ else:
 
 nuke_path = '{0}/.nuke'.format(user_path)
 vina_path = nuke_path + '/vina_nuke'
+dependency_all_nodes = None
 
 
 def get_connected_nodes(node, visited=None):
@@ -196,9 +197,6 @@ def get_input_nodes(node):
             input_nodes.append((i, inode))
 
     return input_nodes
-
-
-dependency_all_nodes = None
 
 
 def get_dependency_all_nodes(force):
