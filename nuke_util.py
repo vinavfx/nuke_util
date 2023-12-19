@@ -4,8 +4,8 @@
 import os
 import platform
 import colorsys
-import nuke
-import nukescripts
+import nuke  # type: ignore
+import nukescripts  # type: ignore
 
 if platform.system() == 'Linux':
     user_path = os.path.expanduser('~')
@@ -49,6 +49,18 @@ def get_dependencies(node):
             nodes_to_process.extend(node.dependencies())
 
     return dependencies
+
+
+def get_dependent(node):
+    nodes = []
+
+    for n in node.dependent():
+        if n.Class() == 'Dot':
+            nodes.extend(get_dependent(n))
+        else:
+            nodes.append(n)
+
+    return nodes
 
 
 def get_user_path():
