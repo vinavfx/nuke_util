@@ -30,8 +30,7 @@ def get_extension(filename):
 
 
 def get_version(filename):
-    basename = os.path.basename(filename)
-    current_version = basename.split('v')[-1].split('.')[0]
+    current_version = get_version_string(filename).replace('v', '')
 
     if current_version.isdigit():
         return int(current_version)
@@ -41,6 +40,10 @@ def get_version(filename):
 
 def get_version_string(filename):
     basename = os.path.basename(filename)
+
+    if not 'v' in basename:
+        return ''
+
     current_version = basename.split('v')[-1].split('.')[0].split('_')[0]
 
     if current_version.isdigit():
