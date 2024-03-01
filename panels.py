@@ -51,6 +51,9 @@ def init(widget_name, label, stacked_widget=None):
 
 
 def init_float_panel(widget, name):
+    if name in nuke.float_panels:
+        return
+
     module = inspect.getmodule(widget)
 
     module.main_widget = widget()
