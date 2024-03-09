@@ -90,6 +90,26 @@ def get_topnode(node):
     return topnode
 
 
+def get_input(node, i):
+    if not node:
+        return
+
+    inode = node.input(i)
+
+    for _ in range(100):
+        if not inode:
+            return
+
+        if inode.Class() == 'Dot':
+            if inode.input(0):
+                inode = inode.input(0)
+                continue
+            else:
+                return
+
+        return inode
+
+
 def is_vina_gizmo(gizmo):
     if not hasattr(gizmo, 'nodes'):
         return False
