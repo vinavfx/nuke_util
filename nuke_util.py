@@ -90,7 +90,7 @@ def get_topnode(node):
     return topnode
 
 
-def get_input(node, i):
+def get_input(node, i, ignore_disabled=True):
     if not node:
         return
 
@@ -100,7 +100,13 @@ def get_input(node, i):
         if not inode:
             return
 
-        if inode.Class() == 'Dot':
+        disable_knob = inode.knob('disable')
+        disabled_node = False
+
+        if disable_knob and ignore_disabled:
+            disabled_node = inode.knob('disable').value()
+
+        if inode.Class() == 'Dot' or disabled_node:
             if inode.input(0):
                 inode = inode.input(0)
                 continue
