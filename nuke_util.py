@@ -32,6 +32,7 @@ def get_connected_nodes(node, visited=None, ignore_disabled=False):
             continue
 
         disable_knob = node.knob('disable')
+
         if ignore_disabled and not i == 0 and disable_knob:
             if disable_knob.value():
                 continue
