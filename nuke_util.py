@@ -222,6 +222,30 @@ def duplicate_node(node, parent=None):
     return new_node
 
 
+def postage_stamp_update(node):
+    node.parent().begin()
+    [n.setSelected(False) for n in nuke.selectedNodes()]
+    node.setSelected(True)
+    nuke.nodeCopy("%clipboard%")
+    node.parent().end()
+
+    nuke.nodePaste("%clipboard%")
+    new_node = nuke.selectedNode()
+
+    node.setSelected(False)
+
+    for i, inode in get_input_nodes(node):
+        new_node.setInput(i, inode)
+
+    new_node.setXYpos(node.xpos(), node.ypos())
+    aux_name = node.name()
+
+    nuke.delete(node)
+
+    new_node.setName(aux_name)
+    new_node.setSelected(False)
+
+
 def get_input_nodes(node):
     input_nodes = []
 
