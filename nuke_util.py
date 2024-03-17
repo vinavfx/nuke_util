@@ -352,6 +352,9 @@ def get_absolute(filename):
 def get_project_name(version=True):
     basename = os.path.basename(nuke.root().name())
 
+    if basename == 'Root':
+        return 'Untitled'
+
     if not version:
         return basename[::-1].split('v', 1)[-1][::-1][:-1]
 
