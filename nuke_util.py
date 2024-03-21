@@ -212,6 +212,8 @@ def duplicate_node(node, parent=None):
     if parent:
         parent.begin()
 
+    [n.setSelected(False) for n in nuke.selectedNodes()]
+
     nuke.nodePaste("%clipboard%")
     new_node = nuke.selectedNode()
     new_node.setSelected(False)
