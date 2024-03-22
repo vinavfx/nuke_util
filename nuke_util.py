@@ -224,18 +224,6 @@ def duplicate_node(node, parent=None):
     return new_node
 
 
-def postage_stamp_update(node):
-    [n.setSelected(False) for n in nuke.selectedNodes()]
-
-    node.setSelected(True)
-
-    menu = nuke.menu('Nuke').menu('Edit')
-    menu.menu('Delete').invoke()
-    menu.menu('Undo').invoke()
-
-    node.setSelected(False)
-
-
 def get_input_nodes(node):
     input_nodes = []
 
