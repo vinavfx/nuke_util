@@ -19,7 +19,7 @@ vina_path = nuke_path + '/vina_nuke'
 dependency_all_nodes = None
 
 
-def get_connected_nodes(node, visited=None, ignore_disabled=False):
+def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_up_level=False):
     if visited is None:
         visited = set()
 
@@ -27,6 +27,11 @@ def get_connected_nodes(node, visited=None, ignore_disabled=False):
 
     for i in range(node.maxInputs()):
         inode = node.input(i)
+
+        if inode and continue_at_up_level:
+            if inode.Class() == 'Input':
+                idx = int(inode.knob('number').value())
+                inode = inode.parent().input(idx)
 
         if not inode:
             continue
@@ -40,7 +45,8 @@ def get_connected_nodes(node, visited=None, ignore_disabled=False):
         if inode not in visited:
             visited.add(inode)
             nodes.append(inode)
-            nodes.extend(get_connected_nodes(inode, visited, ignore_disabled))
+            nodes.extend(get_connected_nodes(inode, visited,
+                         ignore_disabled, continue_at_up_level))
 
     return nodes
 
