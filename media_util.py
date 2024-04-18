@@ -101,8 +101,14 @@ def nomenclature_separator(fullname):
     code = fullname.split('_')[0]
     version = get_version_string(fullname)
 
-    sequence = fullname.split('_')[1]
-    shot = fullname.split('_')[2]
+    possible_shot = fullname.split('_')[3]
+
+    if possible_shot.isdigit():
+        sequence = '_'.join(fullname.split('_')[1:3])
+        shot = possible_shot
+    else:
+        sequence = fullname.split('_')[1]
+        shot = fullname.split('_')[2]
 
     prefix = '{}_{}_{}_'.format(code, sequence, shot)
     task = fullname.split(prefix)[-1].split('_' + version)[0]
