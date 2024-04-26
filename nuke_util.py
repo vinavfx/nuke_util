@@ -9,7 +9,7 @@ import colorsys
 import nuke  # type: ignore
 import nukescripts  # type: ignore
 
-if platform.system() == 'Linux':
+if platform.system() == 'Linux' or platform.system() == 'Darwin':
     user_path = os.path.expanduser('~')
 else:
     user_path = os.environ['USERPROFILE'].replace('\\', '/')
