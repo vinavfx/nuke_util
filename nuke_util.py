@@ -20,13 +20,20 @@ dependency_all_nodes = None
 
 
 def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_up_level=False):
+    nodes = []
+    inodes = [node.input(i) for i in range(node.maxInputs())]
+
     if visited is None:
         visited = set()
 
-    nodes = []
+        if continue_at_up_level:
+            if node.Class() == 'Input':
+                idx = int(node.knob('number').value())
+                node = node.parent()
+                inodes = [None for _ in range(node.maxInputs())]
+                inodes[idx] = node.input(idx)
 
-    for i in range(node.maxInputs()):
-        inode = node.input(i)
+    for i, inode in enumerate(inodes):
 
         if inode and continue_at_up_level:
             if inode.Class() == 'Input':
