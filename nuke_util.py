@@ -109,7 +109,7 @@ def get_topnode(node):
     return topnode
 
 
-def get_input(node, i, ignore_disabled=True):
+def get_input(node, i, ignore_disabled=True, active_switch=False):
     if not node:
         return
 
@@ -128,6 +128,14 @@ def get_input(node, i, ignore_disabled=True):
         if inode.Class() == 'Dot' or disabled_node:
             if inode.input(0):
                 inode = inode.input(0)
+                continue
+            else:
+                return
+
+        if inode.Class() == 'Switch' and active_switch:
+            which = int(inode.knob('which').value())
+            if inode.input(which):
+                inode = inode.input(which)
                 continue
             else:
                 return
