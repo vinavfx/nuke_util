@@ -325,6 +325,9 @@ def set_hex_color(node, hx, intensity=1.0, sat=1.0):
 
     hx = hx[1:]
 
+    if len(hx) == 3:
+        hx = ''.join([c * 2 for c in hx])
+
     r = int(hx[0:2], 16) * intensity
     g = int(hx[2:4], 16) * intensity
     b = int(hx[4:6], 16) * intensity
