@@ -322,6 +322,9 @@ def set_font_color(node, hsl):
 
 
 def set_hex_color(node, hx, intensity=1.0, sat=1.0):
+    if not hx:
+        node['tile_color'].setValue(0)
+        return
 
     hx = hx[1:]
 
