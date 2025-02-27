@@ -15,7 +15,7 @@ else:
     user_path = os.environ['USERPROFILE'].replace('\\', '/')
 
 nuke_path = '{0}/.nuke'.format(user_path)
-vina_path = nuke_path + '/vina_nuke'
+vina_path = nuke_path + '/nuke_tools'
 dependency_all_nodes = None
 
 
