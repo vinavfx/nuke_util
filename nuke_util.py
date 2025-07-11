@@ -219,28 +219,18 @@ def force_clone(src, dst, keep_pos=True):
     return clone
 
 
-def duplicate_node(node, parent=None):
-    node.parent().begin()
-
+def duplicate_node(node):
     [n.setSelected(False) for n in nuke.selectedNodes()]
 
     node.setSelected(True)
     nuke.nodeCopy("%clipboard%")
     node.setSelected(False)
 
-    node.parent().end()
-
-    if parent:
-        parent.begin()
-
     [n.setSelected(False) for n in nuke.selectedNodes()]
 
     nuke.nodePaste("%clipboard%")
     new_node = nuke.selectedNode()
     new_node.setSelected(False)
-
-    if parent:
-        parent.end()
 
     return new_node
 
