@@ -385,3 +385,20 @@ def set_pos_backdrop(backdrop, x, y):
         curYpos = n.ypos()
         n.setXYpos(curXpos - offsetX, curYpos - offsetY)
         n['selected'].setValue(False)
+
+
+def selected_node():
+    nodes = nuke.allNodes(recurseGroups=True)
+    selected = []
+
+    for n in nodes:
+        if n.isSelected():
+            selected.append(n)
+
+    if not len(selected) == 1:
+        nuke.message('Select only one node !')
+        for n in selected:
+            n.setSelected(False)
+        return
+
+    return selected[0]
