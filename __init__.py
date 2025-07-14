@@ -3,5 +3,6 @@ from . import (
     media_util,
     panels,
     func_exec,
-    nodes
+    nodes,
+    dag
 )
