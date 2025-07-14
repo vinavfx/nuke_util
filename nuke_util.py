@@ -8,6 +8,7 @@ import platform
 import colorsys
 import nuke  # type: ignore
 import nukescripts  # type: ignore
+from dag import get_current_dag
 
 if platform.system() == 'Linux' or platform.system() == 'Darwin':
     user_path = os.path.expanduser('~')
@@ -387,18 +388,28 @@ def set_pos_backdrop(backdrop, x, y):
         n['selected'].setValue(False)
 
 
-def selected_node():
-    nodes = nuke.allNodes(recurseGroups=True)
-    selected = []
-
-    for n in nodes:
-        if n.isSelected():
-            selected.append(n)
-
-    if not len(selected) == 1:
-        nuke.message('Select only one node !')
-        for n in selected:
-            n.setSelected(False)
+def selected_node(only_one=True):
+    dag = get_current_dag()
+    if not dag:
         return
 
-    return selected[0]
+    wtitle = dag.windowTitle()
+
+    if wtitle == 'Node Graph':
+        nuke.root().begin()
+        nodes = nuke.selectedNodes()
+    else:
+        group_name = wtitle.split()[0]
+        group = nuke.toNode(group_name)
+        group.begin()
+        nodes = nuke.selectedNodes()
+        group.end()
+
+    if only_one:
+        if not len(nodes) == 1:
+            nuke.message('Select only one node !')
+            return
+        return nodes[0]
+    else:
+        return nodes
+
