@@ -388,7 +388,7 @@ def set_pos_backdrop(backdrop, x, y):
         n['selected'].setValue(False)
 
 
-def selected_node(only_one=True):
+def get_current_group():
     dag = get_current_dag()
     if not dag:
         return
@@ -396,14 +396,20 @@ def selected_node(only_one=True):
     wtitle = dag.windowTitle()
 
     if wtitle == 'Node Graph':
-        nuke.root().begin()
-        nodes = nuke.selectedNodes()
-    else:
-        group_name = wtitle.split()[0]
-        group = nuke.toNode(group_name)
-        group.begin()
-        nodes = nuke.selectedNodes()
-        group.end()
+        return nuke.root()
+
+    group_name = wtitle.split()[0]
+    return nuke.toNode(group_name)
+
+
+def selected_node(only_one=True):
+    current_group = get_current_group()
+    if not current_group:
+        return
+
+    current_group.begin()
+    nodes = nuke.selectedNodes()
+    current_group.end()
 
     if only_one:
         if not len(nodes) == 1:
