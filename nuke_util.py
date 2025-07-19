@@ -8,7 +8,7 @@ import platform
 import colorsys
 import nuke  # type: ignore
 import nukescripts  # type: ignore
-from dag import get_current_dag
+from .dag import get_current_dag
 
 if platform.system() == 'Linux' or platform.system() == 'Darwin':
     user_path = os.path.expanduser('~')
