@@ -4,12 +4,18 @@
 # WEBSITE -------> https://vinavfx.com
 # -----------------------------------------------------------
 import nuke  # type: ignore
-from PySide2.QtGui import QCursor, QTransform
-from PySide2.QtCore import QPoint, QRectF
-from PySide2.QtWidgets import QApplication
-import shiboken2
+try:
+    from PySide6.QtGui import QCursor, QTransform # type: ignore
+    from PySide6.QtCore import QPoint, QRectF # type: ignore
+    from PySide6.QtWidgets import QApplication # type: ignore
+    import shiboken6 as shiboken # type: ignore
+except ImportError:
+    from PySide2.QtGui import QCursor, QTransform
+    from PySide2.QtCore import QPoint, QRectF
+    from PySide2.QtWidgets import QApplication
+    import shiboken2 as shiboken
 
-app = shiboken2.wrapInstance(shiboken2.getCppPointer(  # type: ignore
+app = shiboken.wrapInstance(shiboken.getCppPointer(  # type: ignore
     QApplication.instance())[0], QApplication)
 
 
