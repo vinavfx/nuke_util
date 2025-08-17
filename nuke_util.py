@@ -221,11 +221,13 @@ def force_clone(src, dst, keep_pos=True):
 
 
 def copy_node(node):
+    node.parent().begin()
     [n.setSelected(False) for n in nuke.selectedNodes()]
 
     node.setSelected(True)
     nuke.nodeCopy("%clipboard%")
     node.setSelected(False)
+    node.parent().end()
 
 
 def paste_node():
