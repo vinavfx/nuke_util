@@ -34,8 +34,7 @@ def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_u
                 inodes = [None for _ in range(node.maxInputs())]
                 inodes[idx] = node.input(idx)
 
-    for i, inode in enumerate(inodes):
-
+    for inode in inodes:
         if inode and continue_at_up_level:
             if inode.Class() == 'Input':
                 idx = int(inode.knob('number').value())
@@ -44,15 +43,14 @@ def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_u
         if not inode:
             continue
 
-        disable_knob = node.knob('disable')
-
-        if ignore_disabled and not i == 0 and disable_knob:
-            if disable_knob.value():
-                continue
+        disable_knob = inode.knob('disable')
+        disable = ignore_disabled and disable_knob and disable_knob.value()
 
         if inode not in visited:
-            visited.add(inode)
-            nodes.append(inode)
+            if not disable:
+                visited.add(inode)
+                nodes.append(inode)
+
             nodes.extend(get_connected_nodes(inode, visited,
                          ignore_disabled, continue_at_up_level))
 
