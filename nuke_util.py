@@ -22,6 +22,10 @@ dependency_all_nodes = None
 
 def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_up_level=False):
     nodes = []
+
+    if not node:
+        return nodes
+
     inodes = [node.input(i) for i in range(node.maxInputs())]
 
     if visited is None:
