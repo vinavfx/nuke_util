@@ -146,21 +146,6 @@ def get_input(node, i, ignore_disabled=True, active_switch=False):
         return inode
 
 
-def is_vina_gizmo(gizmo):
-    if not hasattr(gizmo, 'nodes'):
-        return False
-
-    name = gizmo.knob('_name')
-
-    if not name:
-        return False
-
-    if not 'Francisco' in name.value():
-        return False
-
-    return True
-
-
 def get_nuke_path():
     return nuke_path
 
@@ -372,37 +357,6 @@ def get_project_name(version=True):
     return basename[:-3]
 
 
-def knobs_refresh(node):
-    # actualiza el knobs si se ocultan o deshabilitan, con esta se actualizan
-    node.forceValidate()
-    node.lock()
-    node.unlock()
-
-
-def set_pos_backdrop(backdrop, x, y):
-
-    # Old position of Backdrop
-    positionX = backdrop.xpos()
-    positionY = backdrop.ypos()
-
-    # Select nodes in Backdrop
-    backdrop.selectNodes(True)
-
-    # Move Backdrop to new position
-    backdrop.setXYpos(x, y)
-
-    # Calculate offset between new and old Backdrop position
-    offsetX = positionX - backdrop.xpos()
-    offsetY = positionY - backdrop.ypos()
-
-    # Set new position for nodes in Backdrop
-    for n in nuke.selectedNodes():
-        curXpos = n.xpos()
-        curYpos = n.ypos()
-        n.setXYpos(curXpos - offsetX, curYpos - offsetY)
-        n['selected'].setValue(False)
-
-
 def get_current_group():
     dag = get_current_dag()
     if not dag:
@@ -433,4 +387,3 @@ def selected_node(only_one=True):
         return nodes[0]
     else:
         return nodes
-
