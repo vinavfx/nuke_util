@@ -367,7 +367,7 @@ def get_current_group():
     if wtitle == 'Node Graph':
         return nuke.root()
 
-    group_name = wtitle.split()[0]
+    group_name = 'root.' + wtitle.split()[0]
     return nuke.toNode(group_name)
 
 
