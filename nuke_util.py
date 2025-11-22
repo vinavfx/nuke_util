@@ -362,9 +362,9 @@ def get_current_group():
     if not dag:
         return
 
-    wtitle = dag.windowTitle()
+    wtitle = dag.windowTitle().strip()
 
-    if wtitle == 'Node Graph':
+    if wtitle == 'Node Graph' or not wtitle:
         return nuke.root()
 
     group_name = 'root.' + wtitle.split()[0]
