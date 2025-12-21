@@ -231,6 +231,37 @@ def paste_node():
     return new_node
 
 
+def duplicate_nodes(source_nodes, posx=0, posy=0):
+    [n.setSelected(False) for n in nuke.selectedNodes()]
+    for n in source_nodes:
+        n.setSelected(True)
+
+    nuke.nodeCopy("%clipboard%")
+    [n.setSelected(False) for n in nuke.selectedNodes()]
+    nuke.nodePaste("%clipboard%")
+
+    new_nodes = nuke.selectedNodes()
+    ref_nodes = [n for n in new_nodes if n.Class() != "Dot"]
+
+    if not ref_nodes:
+        ref_nodes = new_nodes
+
+    xs = [n.xpos() for n in ref_nodes]
+    ys = [n.ypos() for n in ref_nodes]
+
+    center_x = (min(xs) + max(xs)) / 2
+    center_y = (min(ys) + max(ys)) / 2
+
+    off_x = posx - center_x
+    off_y = posy - center_y
+
+    for n in new_nodes:
+        n.setXYpos(int(n.xpos() + off_x), int(n.ypos() + off_y))
+
+    [n.setSelected(False) for n in nuke.selectedNodes()]
+    return new_nodes
+
+
 def duplicate_node(node):
     copy_node(node)
     return paste_node()
