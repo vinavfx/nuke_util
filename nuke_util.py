@@ -207,9 +207,9 @@ def force_clone(src, dst, keep_pos=True):
     return clone
 
 
-def copy_node(node, parent=False):
-    if parent:
-        node.parent().begin()
+def copy_node(node, group=None):
+    if group:
+        group.begin()
 
     [n.setSelected(False) for n in nuke.selectedNodes()]
 
@@ -217,8 +217,8 @@ def copy_node(node, parent=False):
     nuke.nodeCopy("%clipboard%")
     node.setSelected(False)
 
-    if parent:
-        node.parent().end()
+    if group:
+        group.end()
 
 
 def paste_node():
