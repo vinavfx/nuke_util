@@ -190,6 +190,48 @@ def declone(clone):
     return node
 
 
+def transfer_knobs(source_node, dest_node, link=False):
+    if not source_node or not dest_node:
+        nuke.message("Source or destination node not found.")
+        return
+
+    tmp_group = nuke.createNode('Group', inpanel=False)
+    excluded_set = set(tmp_group.knobs().keys())
+    nuke.delete(tmp_group)
+
+    source_knobs = set(k.name() for k in source_node.allKnobs())
+    dest_knobs = set(k.name() for k in dest_node.allKnobs())
+    common_knobs = source_knobs.intersection(dest_knobs)
+
+    source_name = source_node.fullName()
+    linked_names = []
+
+    for knob_name in common_knobs:
+        if knob_name in excluded_set:
+            continue
+
+        source_knob = source_node.knob(knob_name)
+        dest_knob = dest_node.knob(knob_name)
+
+        if not (source_knob and dest_knob and dest_knob.visible()):
+            continue
+
+        if not nuke.toNode(source_name):
+            continue
+
+        expr = 'root.{}.{}'.format(source_name, knob_name)
+
+        if link:
+            dest_knob.setExpression(expr)
+        else:
+            dest_knob.fromScript(source_knob.toScript())
+
+        linked_names.append(knob_name)
+
+    return linked_names
+
+
+
 def force_clone(src, dst, keep_pos=True):
     clone = nuke.clone(src, inpanel=False)
     clone.setSelected(False)
@@ -252,7 +294,8 @@ def duplicate_nodes(source_nodes, posx=0, posy=0, center_x_from_node='NoOp'):
     center_x = (min(xs) + max(xs)) / 2
     center_y = (min(ys) + max(ys)) / 2
 
-    node_x = next((n for n in new_nodes if n.Class() == center_x_from_node), None)
+    node_x = next((n for n in new_nodes if n.Class()
+                  == center_x_from_node), None)
     if node_x:
         center_x = node_x.xpos()
 
