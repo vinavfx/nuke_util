@@ -190,14 +190,16 @@ def declone(clone):
     return node
 
 
-def transfer_knobs(source_node, dest_node, link=False):
+def transfer_knobs(source_node, dest_node, link=False, transfer_all=False):
     if not source_node or not dest_node:
         nuke.message("Source or destination node not found.")
         return
 
-    tmp_group = nuke.createNode('Group', inpanel=False)
-    excluded_set = set(tmp_group.knobs().keys())
-    nuke.delete(tmp_group)
+    excluded_set = set()
+    if not transfer_all:
+        tmp_group = nuke.createNode('Group', inpanel=False)
+        excluded_set = set(tmp_group.knobs().keys())
+        nuke.delete(tmp_group)
 
     source_knobs = set(k.name() for k in source_node.allKnobs())
     dest_knobs = set(k.name() for k in dest_node.allKnobs())
