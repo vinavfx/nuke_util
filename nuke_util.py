@@ -336,6 +336,9 @@ def get_dependency_all_nodes(force):
     nodes = {}
 
     for node in nuke.allNodes(recurseGroups=True):
+        if 'FnNukeMultiTypeOpIop' in node.Class():
+            continue
+
         for i, inode in get_input_nodes(node):
 
             if inode in nodes:
