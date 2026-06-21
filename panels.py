@@ -6,14 +6,7 @@
 import inspect
 import nuke
 
-try:
-    from PySide2.QtCore import Qt
-    from PySide2.QtWidgets import QWidget, QStackedWidget, QApplication, QDialog
-    from PySide2.QtGui import QScreen
-except:
-    from PySide6.QtCore import Qt
-    from PySide6.QtWidgets import QWidget, QStackedWidget, QApplication, QDialog
-    from PySide6.QtGui import QScreen
+from .pyside import Qt, QApplication, QWidget, QStackedWidget, QDialog, QScreen
 
 if not hasattr(nuke, 'panels'):
     nuke.panels = {}
