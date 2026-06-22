@@ -147,6 +147,7 @@ else:
         QSpinBox,
         QSlider,
         QAction,
+        QShortcut,
     )
 
     from PySide2.QtGui import (
@@ -165,7 +166,5 @@ else:
         QTransform,
         QStandardItemModel,
         QSyntaxHighlighter,
-        QShortcut,
+        QScreen,
     )
-
-    QScreen = None
