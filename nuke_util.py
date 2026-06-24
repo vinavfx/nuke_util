@@ -190,7 +190,7 @@ def declone(clone):
     return node
 
 
-def transfer_knobs(source_node, dest_node, link=False, transfer_all=False):
+def transfer_knobs(source_node, dest_node, link=False, transfer_all=False, ignore_hidden=True):
     if not source_node or not dest_node:
         nuke.message("Source or destination node not found.")
         return
@@ -208,14 +208,21 @@ def transfer_knobs(source_node, dest_node, link=False, transfer_all=False):
     source_name = source_node.fullName()
     linked_names = []
 
+    callback_backup = dest_node['knobChanged'].value()
+    dest_node['knobChanged'].setValue('')
+
     for knob_name in common_knobs:
         if knob_name in excluded_set:
             continue
 
         source_knob = source_node.knob(knob_name)
         dest_knob = dest_node.knob(knob_name)
+        visible = source_knob.visible()
 
-        if not (source_knob and dest_knob and dest_knob.visible()):
+        if not (source_knob and dest_knob):
+            continue
+
+        if not dest_knob.visible() and ignore_hidden:
             continue
 
         if not nuke.toNode(source_name):
@@ -228,7 +235,10 @@ def transfer_knobs(source_node, dest_node, link=False, transfer_all=False):
         else:
             dest_knob.fromScript(source_knob.toScript())
 
+        dest_knob.setVisible(visible)
         linked_names.append(knob_name)
+
+    dest_node['knobChanged'].setValue(callback_backup)
 
     return linked_names
 
