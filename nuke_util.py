@@ -233,6 +233,8 @@ def transfer_knobs(source_node, dest_node, link=False, transfer_all=False, ignor
         if link:
             dest_knob.setExpression(expr)
         else:
+            if isinstance(dest_knob, nuke.Enumeration_Knob):
+                dest_knob.setValues(source_knob.values())
             dest_knob.fromScript(source_knob.toScript())
 
         dest_knob.setVisible(visible)
