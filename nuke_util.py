@@ -442,6 +442,15 @@ def get_absolute(filename):
     return os.path.abspath(nuke.script_directory() + '/' + filename)
 
 
+def get_project_path():
+    project_path = nuke.root().name()
+
+    if project_path == 'Root':
+        return
+
+    return project_path
+
+
 def get_project_name(version=True):
     basename = os.path.basename(nuke.root().name())
 
