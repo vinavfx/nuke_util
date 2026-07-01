@@ -13,7 +13,7 @@ from .nuke_util import get_project_path
 exclude_nodes = ["Write"]
 
 
-def collect(output_dir=None):
+def collect(relative_output=None):
     collected_files = ""
     count = 0
 
@@ -24,8 +24,8 @@ def collect(output_dir=None):
 
     def file_inside_the_shot(filename):
         filename = filename.replace("//", "/")
-        assets_path = "{}/assets".format(os.path.dirname(nkfile))
-        return assets_path in filename
+        project_dir = os.path.dirname(nkfile)
+        return project_dir in filename
 
     for node in get_nodes_with_files():
         for knob in node["knobs"]:
@@ -57,8 +57,9 @@ def collect(output_dir=None):
             basename = os.path.basename(filename)
             dirname = os.path.basename(os.path.dirname(filename))
 
-            assets_dir = output_dir
-            if not assets_dir:
+            if relative_output:
+                assets_dir = os.path.join(os.path.dirname(nkfile), relative_output)
+            else:
                 asset_type = get_asset_type(filename, _is_sequence)
                 assets_dir = os.path.join(
                     os.path.dirname(nkfile), 'assets', asset_type)
