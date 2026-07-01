@@ -13,7 +13,7 @@ from .nuke_util import get_project_path
 exclude_nodes = ["Write"]
 
 
-def collect(relative_output=None):
+def collect(nodes = None, relative_output=None, ignore_levels=0):
     collected_files = ""
     count = 0
 
@@ -25,9 +25,11 @@ def collect(relative_output=None):
     def file_inside_the_shot(filename):
         filename = filename.replace("//", "/")
         project_dir = os.path.dirname(nkfile)
+        for _ in range(ignore_levels):
+            project_dir = os.path.dirname(project_dir)
         return project_dir in filename
 
-    for node in get_nodes_with_files():
+    for node in get_nodes_with_files(nodes):
         for knob in node["knobs"]:
             filename = node["node"][knob].value()
             if file_inside_the_shot(filename):
@@ -42,7 +44,7 @@ def collect(relative_output=None):
     section = 100.0 / count if count else 0
     percent = 0
 
-    for n in get_nodes_with_files():
+    for n in get_nodes_with_files(nodes):
         node = n["node"]
 
         for file_knob_name in n["knobs"]:
@@ -115,12 +117,15 @@ def collect(relative_output=None):
     nuke.message(collected_files)
 
 
-def get_nodes_with_files():
+def get_nodes_with_files(_nodes = None):
+    if _nodes is None:
+        _nodes = nuke.allNodes(recurseGroups=True)
+
     knobs_files = ["file", "proxy", "vfield_file", "font"]
     nodes = []
     node_paths = []
 
-    for node in nuke.allNodes(recurseGroups=True):
+    for node in _nodes:
         if node.Class() in exclude_nodes:
             continue
 
