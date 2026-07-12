@@ -396,6 +396,19 @@ def set_tile_color(node, hsl):
     node['tile_color'].setValue(hex_colour)
 
 
+def get_tile_color(node):
+    tile_color_val = node['tile_color'].value()
+    if not tile_color_val:
+        return [0, 0, 0]
+
+    r = ((tile_color_val >> 24) & 0xFF) / 255.0
+    g = ((tile_color_val >> 16) & 0xFF) / 255.0
+    b = ((tile_color_val >> 8) & 0xFF) / 255.0
+
+    h, s, v = colorsys.rgb_to_hsv(r, g, b)
+    return [h, s, v]
+
+
 def set_font_color(node, hsl):
     h, s, l = hsl
     rgb = colorsys.hsv_to_rgb(h, s, l)
