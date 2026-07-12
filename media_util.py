@@ -51,7 +51,7 @@ def get_version_string(filename):
     return ''
 
 
-def get_name(filename, version=False, padding=False, extension=False):
+def get_name(filename, version=False, padding=False, extension=False, fullpath=False):
     basename = os.path.basename(filename)
 
     if version and padding and extension:
@@ -77,7 +77,11 @@ def get_name(filename, version=False, padding=False, extension=False):
     str_padding = '_' + padd if padd and padding else ''
     str_extension = '.' + ext if ext and extension else ''
 
-    return '{}{}{}{}'.format(base, str_version, str_padding, str_extension)
+    new_name = '{}{}{}{}'.format(base, str_version, str_padding, str_extension)
+    if not fullpath:
+        return new_name
+
+    return os.path.join(os.path.dirname(filename), new_name)
 
 
 def get_basename(filename):
@@ -88,8 +92,8 @@ def get_name_no_extension(filename):
     return get_name(filename, version=True, padding=True)
 
 
-def get_name_no_padding(filename):
-    return get_name(filename, version=True)
+def get_name_no_padding(filename, fullpath=False):
+    return get_name(filename, version=True, fullpath=fullpath)
 
 
 def get_fullname(filename):
