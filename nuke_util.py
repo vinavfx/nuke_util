@@ -20,13 +20,18 @@ vina_path = nuke_path + '/nuke_tools'
 dependency_all_nodes = None
 
 
-def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_up_level=False):
+def get_connected_nodes(node, visited=None, ignore_disabled=False,
+                        continue_at_up_level=False, active_switch=False):
     nodes = []
 
     if not node:
         return nodes
 
-    inodes = [node.input(i) for i in range(node.maxInputs())]
+    if node.Class() == 'Switch' and active_switch:
+        which = int(node.knob('which').value())
+        inodes = [node.input(which)]
+    else:
+        inodes = [node.input(i) for i in range(node.maxInputs())]
 
     if visited is None:
         visited = set()
@@ -55,8 +60,8 @@ def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_u
                 visited.add(inode)
                 nodes.append(inode)
 
-            nodes.extend(get_connected_nodes(inode, visited,
-                         ignore_disabled, continue_at_up_level))
+            nodes.extend(get_connected_nodes(
+                inode, visited, ignore_disabled, continue_at_up_level, active_switch))
 
     return nodes
 
