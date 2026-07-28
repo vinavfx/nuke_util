@@ -8,28 +8,28 @@ import os
 
 
 def is_absolute(filename):
-    if '../' in filename:
+    if "../" in filename:
         return False
 
     return True
 
 
 def get_padding(filename):
-    padding = re.search('(#+)|(%\d\d?d)|(%d)', filename)
+    padding = re.search("(#+)|(%\d\d?d)|(%d)", filename)
     padding = padding.group(0) if padding else ""
 
     return padding
 
 
 def get_extension(filename):
-    if not '.' in filename:
-        return ''
+    if not "." in filename:
+        return ""
 
-    return filename.split('.')[-1]
+    return filename.split(".")[-1]
 
 
 def get_version(filename):
-    current_version = get_version_string(filename).replace('v', '')
+    current_version = get_version_string(filename).replace("v", "")
 
     if current_version.isdigit():
         return int(current_version)
@@ -40,15 +40,15 @@ def get_version(filename):
 def get_version_string(filename):
     basename = os.path.basename(filename)
 
-    if not 'v' in basename:
-        return ''
+    if not "v" in basename:
+        return ""
 
-    current_version = basename.split('v')[-1].split('.')[0].split('_')[0]
+    current_version = basename.split("v")[-1].split(".")[0].split("_")[0]
 
     if current_version.isdigit():
-        return 'v' + current_version
+        return "v" + current_version
 
-    return ''
+    return ""
 
 
 def get_name(filename, version=False, padding=False, extension=False, fullpath=False):
@@ -57,7 +57,7 @@ def get_name(filename, version=False, padding=False, extension=False, fullpath=F
     if version and padding and extension:
         return basename
     elif version and padding:
-        return basename.rsplit('.', 1)[0]
+        return basename.rsplit(".", 1)[0]
 
     ext = get_extension(basename)
     padd = get_padding(basename)
@@ -71,13 +71,13 @@ def get_name(filename, version=False, padding=False, extension=False, fullpath=F
     elif padd:
         base = basename.split(padd)[0][:-1]
     else:
-        base = basename.rsplit('.', 1)[0]
+        base = basename.rsplit(".", 1)[0]
 
-    str_version = '_' + vers if vers and version else ''
-    str_padding = '_' + padd if padd and padding else ''
-    str_extension = '.' + ext if ext and extension else ''
+    str_version = "_" + vers if vers and version else ""
+    str_padding = "_" + padd if padd and padding else ""
+    str_extension = "." + ext if ext and extension else ""
 
-    new_name = '{}{}{}{}'.format(base, str_version, str_padding, str_extension)
+    new_name = "{}{}{}{}".format(base, str_version, str_padding, str_extension)
     if not fullpath:
         return new_name
 
@@ -101,20 +101,20 @@ def get_fullname(filename):
 
 
 def nomenclature_separator(fullname):
-    code = fullname.split('_')[0]
+    code = fullname.split("_")[0]
     version = get_version_string(fullname)
 
-    possible_shot = fullname.split('_')[3]
+    possible_shot = fullname.split("_")[3]
 
     if possible_shot.isdigit():
-        sequence = '_'.join(fullname.split('_')[1:3])
+        sequence = "_".join(fullname.split("_")[1:3])
         shot = possible_shot
     else:
-        sequence = fullname.split('_')[1]
-        shot = fullname.split('_')[2]
+        sequence = fullname.split("_")[1]
+        shot = fullname.split("_")[2]
 
-    prefix = '{}_{}_{}_'.format(code, sequence, shot)
-    task = fullname.split(prefix)[-1].split('_' + version)[0]
+    prefix = "{}_{}_{}_".format(code, sequence, shot)
+    task = fullname.split(prefix)[-1].split("_" + version)[0]
 
     padding = get_padding(fullname)
     ext = get_extension(fullname)
@@ -123,7 +123,7 @@ def nomenclature_separator(fullname):
 
 
 def get_padding_ext(filename):
-    return get_padding(filename) + '.' + get_extension(filename)
+    return get_padding(filename) + "." + get_extension(filename)
 
 
 def is_sequence(filename):
@@ -142,7 +142,7 @@ def get_sequence(filename, frange=None):
 
     prefix, suffix = basename.rsplit(padding, 1)
     no_padding = prefix + suffix
-    no_number = ''.join([i for i in no_padding if not i.isdigit()])
+    no_number = "".join([i for i in no_padding if not i.isdigit()])
 
     dirname = os.path.dirname(filename)
     if not os.path.isdir(dirname):
@@ -154,14 +154,14 @@ def get_sequence(filename, frange=None):
         if not prefix in f or not suffix in f:
             continue
 
-        _no_number = ''.join([i for i in f if not i.isdigit()])
+        _no_number = "".join([i for i in f if not i.isdigit()])
 
         if not len(_no_number) == len(no_number):
             continue
 
         if not frange == None:
-            pre = f[:len(prefix)]
-            number = int(f.split(pre, 1)[1][:-len(suffix)])
+            pre = f[: len(prefix)]
+            number = int(f.split(pre, 1)[1][: -len(suffix)])
             if not number in range(frange[0], frange[1] + 1):
                 continue
 

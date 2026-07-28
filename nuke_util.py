@@ -10,25 +10,24 @@ import nuke  # type: ignore
 import nukescripts  # type: ignore
 from .dag import get_current_dag
 
-if platform.system() == 'Linux' or platform.system() == 'Darwin':
-    user_path = os.path.expanduser('~')
+if platform.system() == "Linux" or platform.system() == "Darwin":
+    user_path = os.path.expanduser("~")
 else:
-    user_path = os.environ['USERPROFILE'].replace('\\', '/')
+    user_path = os.environ["USERPROFILE"].replace("\\", "/")
 
-nuke_path = '{0}/.nuke'.format(user_path)
-vina_path = nuke_path + '/nuke_tools'
+nuke_path = "{0}/.nuke".format(user_path)
+vina_path = nuke_path + "/nuke_tools"
 dependency_all_nodes = None
 
 
-def get_connected_nodes(node, visited=None, ignore_disabled=False,
-                        continue_at_up_level=False, active_switch=False):
+def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_up_level=False, active_switch=False):
     nodes = []
 
     if not node:
         return nodes
 
-    if node.Class() == 'Switch' and active_switch:
-        which = int(node.knob('which').value())
+    if node.Class() == "Switch" and active_switch:
+        which = int(node.knob("which").value())
         inodes = [node.input(which)]
     else:
         inodes = [node.input(i) for i in range(node.maxInputs())]
@@ -37,22 +36,22 @@ def get_connected_nodes(node, visited=None, ignore_disabled=False,
         visited = set()
 
         if continue_at_up_level:
-            if node.Class() == 'Input':
-                idx = int(node.knob('number').value())
+            if node.Class() == "Input":
+                idx = int(node.knob("number").value())
                 node = node.parent()
                 inodes = [None for _ in range(node.maxInputs())]
                 inodes[idx] = node.input(idx)
 
     for inode in inodes:
         if inode and continue_at_up_level:
-            if inode.Class() == 'Input':
-                idx = int(inode.knob('number').value())
+            if inode.Class() == "Input":
+                idx = int(inode.knob("number").value())
                 inode = inode.parent().input(idx)
 
         if not inode:
             continue
 
-        disable_knob = inode.knob('disable')
+        disable_knob = inode.knob("disable")
         disable = ignore_disabled and disable_knob and disable_knob.value()
 
         if inode not in visited:
@@ -60,8 +59,7 @@ def get_connected_nodes(node, visited=None, ignore_disabled=False,
                 visited.add(inode)
                 nodes.append(inode)
 
-            nodes.extend(get_connected_nodes(
-                inode, visited, ignore_disabled, continue_at_up_level, active_switch))
+            nodes.extend(get_connected_nodes(inode, visited, ignore_disabled, continue_at_up_level, active_switch))
 
     return nodes
 
@@ -85,7 +83,7 @@ def get_dependent(node):
     nodes = []
 
     for n in node.dependent():
-        if n.Class() == 'Dot':
+        if n.Class() == "Dot":
             nodes.extend(get_dependent(n))
         else:
             nodes.append(n)
@@ -127,21 +125,21 @@ def get_input(node, i, ignore_disabled=True, active_switch=False):
         if not inode:
             return
 
-        disable_knob = inode.knob('disable')
+        disable_knob = inode.knob("disable")
         disabled_node = False
 
         if disable_knob and ignore_disabled:
-            disabled_node = inode.knob('disable').value()
+            disabled_node = inode.knob("disable").value()
 
-        if inode.Class() == 'Dot' or disabled_node:
+        if inode.Class() == "Dot" or disabled_node:
             if inode.input(0):
                 inode = inode.input(0)
                 continue
             else:
                 return
 
-        if inode.Class() == 'Switch' and active_switch:
-            which = int(inode.knob('which').value())
+        if inode.Class() == "Switch" and active_switch:
+            which = int(inode.knob("which").value())
             if inode.input(which):
                 inode = inode.input(which)
                 continue
@@ -156,25 +154,27 @@ def get_nuke_path():
 
 
 def get_nuke_executable():
-    executable = '/opt/Nuke{}/nuke'.format(nuke.NUKE_VERSION_STRING)
+    executable = "/opt/Nuke{}/nuke".format(nuke.NUKE_VERSION_STRING)
 
     if os.path.isfile(executable):
         return executable
 
-    executable = '/usr/local/Nuke{}/Nuke{}.{}'.format(
-        nuke.NUKE_VERSION_STRING, nuke.NUKE_VERSION_MAJOR, nuke.NUKE_VERSION_MINOR)
+    executable = "/usr/local/Nuke{}/Nuke{}.{}".format(
+        nuke.NUKE_VERSION_STRING, nuke.NUKE_VERSION_MAJOR, nuke.NUKE_VERSION_MINOR
+    )
 
     if os.path.isfile(executable):
         return executable
 
-    executable = 'C:/Program Files/Nuke{}/Nuke{}.{}.exe'.format(
-        nuke.NUKE_VERSION_STRING, nuke.NUKE_VERSION_MAJOR, nuke.NUKE_VERSION_MINOR)
+    executable = "C:/Program Files/Nuke{}/Nuke{}.{}.exe".format(
+        nuke.NUKE_VERSION_STRING, nuke.NUKE_VERSION_MAJOR, nuke.NUKE_VERSION_MINOR
+    )
 
     return executable
 
 
 def get_nuke_plugins():
-    return os.path.dirname(get_nuke_executable()) + '/plugins'
+    return os.path.dirname(get_nuke_executable()) + "/plugins"
 
 
 def declone(clone):
@@ -195,14 +195,16 @@ def declone(clone):
     return node
 
 
-def transfer_knobs(source_node, dest_node, link=False, transfer_all=False, ignore_hidden=True, disable_knob_changed=True):
+def transfer_knobs(
+    source_node, dest_node, link=False, transfer_all=False, ignore_hidden=True, disable_knob_changed=True
+):
     if not source_node or not dest_node:
         nuke.message("Source or destination node not found.")
         return
 
     excluded_set = set()
     if not transfer_all:
-        tmp_group = nuke.createNode('Group', inpanel=False)
+        tmp_group = nuke.createNode("Group", inpanel=False)
         excluded_set = set(tmp_group.knobs().keys())
         nuke.delete(tmp_group)
 
@@ -213,9 +215,9 @@ def transfer_knobs(source_node, dest_node, link=False, transfer_all=False, ignor
     source_name = source_node.fullName()
     linked_names = []
 
-    callback_backup = dest_node['knobChanged'].value()
+    callback_backup = dest_node["knobChanged"].value()
     if disable_knob_changed:
-        dest_node['knobChanged'].setValue('')
+        dest_node["knobChanged"].setValue("")
 
     for knob_name in common_knobs:
         if knob_name in excluded_set:
@@ -234,7 +236,7 @@ def transfer_knobs(source_node, dest_node, link=False, transfer_all=False, ignor
         if not nuke.toNode(source_name):
             continue
 
-        expr = 'root.{}.{}'.format(source_name, knob_name)
+        expr = "root.{}.{}".format(source_name, knob_name)
 
         if link:
             dest_knob.setExpression(expr)
@@ -247,10 +249,9 @@ def transfer_knobs(source_node, dest_node, link=False, transfer_all=False, ignor
         linked_names.append(knob_name)
 
     if disable_knob_changed:
-        dest_node['knobChanged'].setValue(callback_backup)
+        dest_node["knobChanged"].setValue(callback_backup)
 
     return linked_names
-
 
 
 def force_clone(src, dst, keep_pos=True):
@@ -294,7 +295,7 @@ def paste_node():
     return new_node
 
 
-def duplicate_nodes(source_nodes, posx=0, posy=0, center_x_from_node='NoOp'):
+def duplicate_nodes(source_nodes, posx=0, posy=0, center_x_from_node="NoOp"):
     [n.setSelected(False) for n in nuke.selectedNodes()]
     for n in source_nodes:
         n.setSelected(True)
@@ -315,8 +316,7 @@ def duplicate_nodes(source_nodes, posx=0, posy=0, center_x_from_node='NoOp'):
     center_x = (min(xs) + max(xs)) / 2
     center_y = (min(ys) + max(ys)) / 2
 
-    node_x = next((n for n in new_nodes if n.Class()
-                  == center_x_from_node), None)
+    node_x = next((n for n in new_nodes if n.Class() == center_x_from_node), None)
     if node_x:
         center_x = node_x.xpos()
 
@@ -355,7 +355,7 @@ def get_dependency_all_nodes(force):
     nodes = {}
 
     for node in nuke.allNodes(recurseGroups=True):
-        if 'FnNukeMultiTypeOpIop' in node.Class():
+        if "FnNukeMultiTypeOpIop" in node.Class():
             continue
 
         for i, inode in get_input_nodes(node):
@@ -396,13 +396,13 @@ def set_tile_color(node, hsl):
     g = int(rgb[1] * 255)
     b = int(rgb[2] * 255)
 
-    hex_colour = int('%02x%02x%02x%02x' % (r, g, b, 1), 16)
+    hex_colour = int("%02x%02x%02x%02x" % (r, g, b, 1), 16)
 
-    node['tile_color'].setValue(hex_colour)
+    node["tile_color"].setValue(hex_colour)
 
 
 def get_tile_color(node):
-    tile_color_val = node['tile_color'].value()
+    tile_color_val = node["tile_color"].value()
     if not tile_color_val:
         return [0, 0, 0]
 
@@ -422,20 +422,20 @@ def set_font_color(node, hsl):
     g = int(rgb[1] * 255)
     b = int(rgb[2] * 255)
 
-    hex_colour = int('%02x%02x%02x%02x' % (r, g, b, 1), 16)
+    hex_colour = int("%02x%02x%02x%02x" % (r, g, b, 1), 16)
 
-    node['note_font_color'].setValue(hex_colour)
+    node["note_font_color"].setValue(hex_colour)
 
 
 def set_hex_color(node, hx, intensity=1.0, sat=1.0):
     if not hx:
-        node['tile_color'].setValue(0)
+        node["tile_color"].setValue(0)
         return
 
     hx = hx[1:]
 
     if len(hx) == 3:
-        hx = ''.join([c * 2 for c in hx])
+        hx = "".join([c * 2 for c in hx])
 
     r = int(hx[0:2], 16) * intensity
     g = int(hx[2:4], 16) * intensity
@@ -447,23 +447,22 @@ def set_hex_color(node, hx, intensity=1.0, sat=1.0):
     g = int((g - average) * sat + average)
     b = int((b - average) * sat + average)
 
-    hex_colour = int('%02x%02x%02x%02x' %
-                     (r, g, b, 1), 16)
+    hex_colour = int("%02x%02x%02x%02x" % (r, g, b, 1), 16)
 
-    node['tile_color'].setValue(hex_colour)
+    node["tile_color"].setValue(hex_colour)
 
 
 def get_absolute(filename):
-    if not '..' in filename:
+    if not ".." in filename:
         return filename
 
-    return os.path.abspath(nuke.script_directory() + '/' + filename)
+    return os.path.abspath(nuke.script_directory() + "/" + filename)
 
 
 def get_project_path():
     project_path = nuke.root().name()
 
-    if project_path == 'Root':
+    if project_path == "Root":
         return
 
     return project_path
@@ -472,11 +471,11 @@ def get_project_path():
 def get_project_name(version=True):
     basename = os.path.basename(nuke.root().name())
 
-    if basename == 'Root':
-        return 'Untitled'
+    if basename == "Root":
+        return "Untitled"
 
     if not version:
-        return basename[::-1].split('v', 1)[-1][::-1][:-1]
+        return basename[::-1].split("v", 1)[-1][::-1][:-1]
 
     return basename[:-3]
 
@@ -488,10 +487,10 @@ def get_current_group():
 
     wtitle = dag.windowTitle().strip()
 
-    if wtitle == 'Node Graph' or not wtitle:
+    if wtitle == "Node Graph" or not wtitle:
         return nuke.root()
 
-    group_name = 'root.' + wtitle.split()[0]
+    group_name = "root." + wtitle.split()[0]
     return nuke.toNode(group_name)
 
 
@@ -506,7 +505,7 @@ def selected_node(only_one=True):
 
     if only_one:
         if not len(nodes) == 1:
-            nuke.message('Select only one node !')
+            nuke.message("Select only one node !")
             return
         return nodes[0]
     else:

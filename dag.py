@@ -4,26 +4,26 @@
 # WEBSITE -------> https://vinavfx.com
 # -----------------------------------------------------------
 import nuke  # type: ignore
+
 try:
-    from PySide6.QtGui import QCursor, QTransform # type: ignore
-    from PySide6.QtCore import QPoint, QRectF # type: ignore
-    from PySide6.QtWidgets import QApplication # type: ignore
-    import shiboken6 as shiboken # type: ignore
+    from PySide6.QtGui import QCursor, QTransform  # type: ignore
+    from PySide6.QtCore import QPoint, QRectF  # type: ignore
+    from PySide6.QtWidgets import QApplication  # type: ignore
+    import shiboken6 as shiboken  # type: ignore
 except ImportError:
     from PySide2.QtGui import QCursor, QTransform
     from PySide2.QtCore import QPoint, QRectF
     from PySide2.QtWidgets import QApplication
     import shiboken2 as shiboken
 
-app = shiboken.wrapInstance(shiboken.getCppPointer(  # type: ignore
-    QApplication.instance())[0], QApplication)
+app = shiboken.wrapInstance(shiboken.getCppPointer(QApplication.instance())[0], QApplication)  # type: ignore
 
 
 def get_dag_widgets(visible=True):
     dags = []
     all_widgets = app.allWidgets()
     for widget in all_widgets:
-        if 'DAG' in widget.objectName():
+        if "DAG" in widget.objectName():
             if not visible or (visible and widget.isVisible()):
                 dags.append(widget)
     return dags

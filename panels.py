@@ -8,7 +8,7 @@ import nuke
 
 from .pyside import Qt, QApplication, QWidget, QStackedWidget, QDialog, QScreen
 
-if not hasattr(nuke, 'panels'):
+if not hasattr(nuke, "panels"):
     nuke.panels = {}
     nuke.float_panels = {}
 
@@ -21,21 +21,21 @@ def init(widget_name, label, stacked_widget=None):
             PythonPanel.__init__(self, label, name)
 
             self.customKnob = nuke.PyCustom_Knob(
-                name, "", "__import__('nukescripts').panels.WidgetKnob({})".format(widget))
+                name, "", "__import__('nukescripts').panels.WidgetKnob({})".format(widget)
+            )
 
-            nuke.panels[name] = lambda: self.customKnob.getObject(
-            ).widget if self.customKnob.getObject() else None
+            nuke.panels[name] = lambda: self.customKnob.getObject().widget if self.customKnob.getObject() else None
 
             self.addKnob(self.customKnob)
 
-    name = label.lower().replace(' ', '_')
+    name = label.lower().replace(" ", "_")
 
     panel = Panel(label, name, widget_name)
 
     def add_panel():
         return panel.addToPane()
 
-    menu = nuke.menu('Pane')
+    menu = nuke.menu("Pane")
     menu.addCommand(label, add_panel)
     registerPanel(name, add_panel)
 
@@ -97,8 +97,7 @@ class float_panel_widget(QDialog):
         self.setWindowFlags(Qt.Tool)
 
     def center_window(self):
-        centerPoint = QScreen.availableGeometry(
-            QApplication.primaryScreen()).center()
+        centerPoint = QScreen.availableGeometry(QApplication.primaryScreen()).center()
 
         fg = self.frameGeometry()
         fg.moveCenter(centerPoint)
@@ -129,7 +128,7 @@ class panel_widget(QWidget):
         if not stacked_widget:
             return
 
-        stacked_widget.setStyleSheet('QScrollArea {border: none}')
+        stacked_widget.setStyleSheet("QScrollArea {border: none}")
 
         if self.margin == None:
             return
@@ -139,8 +138,7 @@ class panel_widget(QWidget):
             pwidget = pwidget.parentWidget()
             pwidget.layout().setContentsMargins(0, 0, 0, 0)
 
-        pwidget.layout().setContentsMargins(
-            self.margin, self.margin, self.margin, self.margin)
+        pwidget.layout().setContentsMargins(self.margin, self.margin, self.margin, self.margin)
 
     def updateValue(self):
         return

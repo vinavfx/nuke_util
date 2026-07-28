@@ -13,13 +13,13 @@ from .nuke_util import get_project_path
 exclude_nodes = ["Write"]
 
 
-def collect(nodes = None, relative_output=None, ignore_levels=0):
+def collect(nodes=None, relative_output=None, ignore_levels=0):
     collected_files = ""
     count = 0
 
     nkfile = get_project_path()
     if not nkfile:
-        nuke.message('Unsaved nk project!')
+        nuke.message("Unsaved nk project!")
         return
 
     def file_inside_the_shot(filename):
@@ -63,17 +63,14 @@ def collect(nodes = None, relative_output=None, ignore_levels=0):
                 assets_dir = os.path.join(os.path.dirname(nkfile), relative_output)
             else:
                 asset_type = get_asset_type(filename, _is_sequence)
-                assets_dir = os.path.join(
-                    os.path.dirname(nkfile), 'assets', asset_type)
+                assets_dir = os.path.join(os.path.dirname(nkfile), "assets", asset_type)
 
             if not os.path.isdir(assets_dir):
                 os.makedirs(assets_dir)
 
             if _is_sequence:
                 sequence = get_sequence(filename)
-                sequence_dir = os.path.join(
-                    assets_dir, dirname + "_" + get_name_no_padding(filename)
-                )
+                sequence_dir = os.path.join(assets_dir, dirname + "_" + get_name_no_padding(filename))
 
                 if not os.path.isdir(sequence_dir):
                     os.makedirs(sequence_dir)
@@ -117,7 +114,7 @@ def collect(nodes = None, relative_output=None, ignore_levels=0):
     nuke.message(collected_files)
 
 
-def get_nodes_with_files(_nodes = None):
+def get_nodes_with_files(_nodes=None):
     if _nodes is None:
         _nodes = nuke.allNodes(recurseGroups=True)
 
