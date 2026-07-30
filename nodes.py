@@ -11,7 +11,15 @@ def set_channels(shuffle, channel_in="rgba", channel_out="rgba"):
         if n in nuke.layers():
             continue
 
-        nuke.Layer(n, ["{}.red".format(n), "{}.green".format(n), "{}.blue".format(n), "{}.alpha".format(n)])
+        nuke.Layer(
+            n,
+            [
+                "{}.red".format(n),
+                "{}.green".format(n),
+                "{}.blue".format(n),
+                "{}.alpha".format(n),
+            ],
+        )
 
     shuffle.knob("in").setValue(channel_in)
     shuffle.knob("in2").setValue("none")

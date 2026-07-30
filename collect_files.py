@@ -70,7 +70,9 @@ def collect(nodes=None, relative_output=None, ignore_levels=0):
 
             if _is_sequence:
                 sequence = get_sequence(filename)
-                sequence_dir = os.path.join(assets_dir, dirname + "_" + get_name_no_padding(filename))
+                sequence_dir = os.path.join(
+                    assets_dir, dirname + "_" + get_name_no_padding(filename)
+                )
 
                 if not os.path.isdir(sequence_dir):
                     os.makedirs(sequence_dir)

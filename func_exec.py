@@ -15,7 +15,9 @@ from .nuke_util import get_nuke_executable
 
 def exec_function(function, data):
 
-    tmp_script_file = "/tmp/submit_function_{}.py".format(int(random.random() * 1000000))
+    tmp_script_file = "/tmp/submit_function_{}.py".format(
+        int(random.random() * 1000000)
+    )
 
     data_encoded = base64.b64encode(json.dumps(data).encode()).decode()
 
@@ -42,13 +44,17 @@ def exec_function(function, data):
 
     cmd = '"{}" -t {}'.format(executable, tmp_script_file)
 
-    p = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    p = subprocess.Popen(
+        cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    )
 
     output, _ = p.communicate()
     os.remove(tmp_script_file)
 
     try:
-        output_print = output.decode().split("__output__")[-1].strip().split("__return__")[0]
+        output_print = (
+            output.decode().split("__output__")[-1].strip().split("__return__")[0]
+        )
         print(output_print)
     except:
         pass

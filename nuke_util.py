@@ -20,7 +20,13 @@ vina_path = nuke_path + "/nuke_tools"
 dependency_all_nodes = None
 
 
-def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_up_level=False, active_switch=False):
+def get_connected_nodes(
+    node,
+    visited=None,
+    ignore_disabled=False,
+    continue_at_up_level=False,
+    active_switch=False,
+):
     nodes = []
 
     if not node:
@@ -59,7 +65,11 @@ def get_connected_nodes(node, visited=None, ignore_disabled=False, continue_at_u
                 visited.add(inode)
                 nodes.append(inode)
 
-            nodes.extend(get_connected_nodes(inode, visited, ignore_disabled, continue_at_up_level, active_switch))
+            nodes.extend(
+                get_connected_nodes(
+                    inode, visited, ignore_disabled, continue_at_up_level, active_switch
+                )
+            )
 
     return nodes
 
@@ -196,7 +206,12 @@ def declone(clone):
 
 
 def transfer_knobs(
-    source_node, dest_node, link=False, transfer_all=False, ignore_hidden=True, disable_knob_changed=True
+    source_node,
+    dest_node,
+    link=False,
+    transfer_all=False,
+    ignore_hidden=True,
+    disable_knob_changed=True,
 ):
     if not source_node or not dest_node:
         nuke.message("Source or destination node not found.")

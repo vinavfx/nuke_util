@@ -21,10 +21,16 @@ def init(widget_name, label, stacked_widget=None):
             PythonPanel.__init__(self, label, name)
 
             self.customKnob = nuke.PyCustom_Knob(
-                name, "", "__import__('nukescripts').panels.WidgetKnob({})".format(widget)
+                name,
+                "",
+                "__import__('nukescripts').panels.WidgetKnob({})".format(widget),
             )
 
-            nuke.panels[name] = lambda: self.customKnob.getObject().widget if self.customKnob.getObject() else None
+            nuke.panels[name] = (
+                lambda: self.customKnob.getObject().widget
+                if self.customKnob.getObject()
+                else None
+            )
 
             self.addKnob(self.customKnob)
 
@@ -138,7 +144,9 @@ class panel_widget(QWidget):
             pwidget = pwidget.parentWidget()
             pwidget.layout().setContentsMargins(0, 0, 0, 0)
 
-        pwidget.layout().setContentsMargins(self.margin, self.margin, self.margin, self.margin)
+        pwidget.layout().setContentsMargins(
+            self.margin, self.margin, self.margin, self.margin
+        )
 
     def updateValue(self):
         return
