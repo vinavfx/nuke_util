@@ -14,6 +14,9 @@ if not hasattr(nuke, "panels"):
 
 
 def init(widget_name, label, stacked_widget=None):
+    if not nuke.GUI:
+        return
+
     from nukescripts import PythonPanel, registerPanel
 
     class Panel(PythonPanel):
