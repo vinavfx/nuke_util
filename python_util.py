@@ -51,7 +51,9 @@ def jread(file):
 
 
 def jprint(data):
-    formatted = json.dumps(data, indent=4)
+    formatted = json.dumps(
+        data, indent=4, default=lambda _: "[non-serializable object]"
+    )
     print(formatted)
 
 
