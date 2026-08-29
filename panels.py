@@ -3,10 +3,16 @@
 # OFFICE --------> Senior VFX Compositor, Software Developer
 # WEBSITE -------> https://vinavfx.com
 # -----------------------------------------------------------
-import inspect
-import nuke
+import nuke  # type: ignore
 
-from .pyside import Qt, QApplication, QWidget, QStackedWidget, QDialog, QScreen
+from .pyside import (  # type: ignore
+    Qt,  # type: ignore
+    QApplication,  # type: ignore
+    QWidget,  # type: ignore
+    QStackedWidget,  # type: ignore
+    QDialog,  # type: ignore
+    QScreen,  # type: ignore
+)
 
 if not hasattr(nuke, "panels"):
     nuke.panels = {}
@@ -17,7 +23,7 @@ def init(widget_name, label, stacked_widget=None):
     if not nuke.GUI:
         return
 
-    from nukescripts import PythonPanel, registerPanel
+    from nukescripts import PythonPanel, registerPanel  # type: ignore
 
     class Panel(PythonPanel):
         def __init__(self, label, name, widget):
@@ -29,8 +35,8 @@ def init(widget_name, label, stacked_widget=None):
                 "__import__('nukescripts').panels.WidgetKnob({})".format(widget),
             )
 
-            nuke.panels[name] = (
-                lambda: self.customKnob.getObject().widget
+            nuke.panels[name] = lambda: (
+                self.customKnob.getObject().widget
                 if self.customKnob.getObject()
                 else None
             )
@@ -56,19 +62,48 @@ def init(widget_name, label, stacked_widget=None):
         if last_focus_widget:
             last_focus_widget.setFocus()
 
+    return panel
+
+
+def show_panel(panel_name, panel, minimum_size=None):
+    widget = nuke.panels[panel_name]()
+    is_docked = False
+
+    if widget is not None:
+        stacked_widget, child = get_stacked_widget(widget)
+        if stacked_widget and child:
+            stacked_widget.setCurrentWidget(child)
+            is_docked = True
+
+    if not is_docked and (widget is None or not widget.isVisible()):
+        if panel is None:
+            return
+
+        panel.show()
+        widget = nuke.panels[panel_name]()
+        if widget is not None and minimum_size:
+            window = widget.window()
+            width, height = minimum_size
+            window.resize(max(window.width(), width), max(window.height(), height))
+            screen = QApplication.primaryScreen()
+            if screen:
+                frame = window.frameGeometry()
+                frame.moveCenter(screen.availableGeometry().center())
+                window.move(frame.topLeft())
+
+    return widget
+
 
 def init_float_panel(widget, name):
     if name in nuke.float_panels:
         return
 
-    module = inspect.getmodule(widget)
-
-    module.main_widget = widget()
-    nuke.float_panels[name] = module.main_widget
+    main_widget = widget()
+    nuke.float_panels[name] = main_widget
 
 
 def close_panel(panel_name):
-    if not panel_name in nuke.panels:
+    if panel_name not in nuke.panels:
         return
 
     widget = nuke.panels[panel_name]()
@@ -139,7 +174,7 @@ class panel_widget(QWidget):
 
         stacked_widget.setStyleSheet("QScrollArea {border: none}")
 
-        if self.margin == None:
+        if self.margin is None:
             return
 
         pwidget = self
