@@ -7,13 +7,14 @@ import os
 import nuke  # type: ignore
 import shutil
 
-from .media_util import is_sequence, get_sequence, get_name_no_padding, get_extension
-from .nuke_util import get_project_path
+from .media_names import get_extension, get_sequence_stem
+from .sequences import has_frame_padding, list_sequence_files
+from .paths import get_project_path
 
 exclude_nodes = ["Write"]
 
 
-def collect(nodes=None, relative_output=None, ignore_levels=0):
+def collect_external_files(nodes=None, relative_output=None, ignore_levels=0):
     collected_files = ""
     count = 0
 
@@ -29,14 +30,15 @@ def collect(nodes=None, relative_output=None, ignore_levels=0):
             project_dir = os.path.dirname(project_dir)
         return project_dir in filename
 
-    for node in get_nodes_with_files(nodes):
+    file_nodes = get_nodes_with_file_knobs(nodes)
+    for node in file_nodes:
         for knob in node["knobs"]:
             filename = node["node"][knob].value()
             if file_inside_the_shot(filename):
                 continue
 
-            if is_sequence(filename):
-                count += len(get_sequence(filename))
+            if has_frame_padding(filename):
+                count += len(list_sequence_files(filename))
             else:
                 count += 1
 
@@ -44,7 +46,7 @@ def collect(nodes=None, relative_output=None, ignore_levels=0):
     section = 100.0 / count if count else 0
     percent = 0
 
-    for n in get_nodes_with_files(nodes):
+    for n in file_nodes:
         node = n["node"]
 
         for file_knob_name in n["knobs"]:
@@ -55,23 +57,23 @@ def collect(nodes=None, relative_output=None, ignore_levels=0):
             if inside:
                 continue
 
-            _is_sequence = is_sequence(filename)
+            sequence_file = has_frame_padding(filename)
             basename = os.path.basename(filename)
             dirname = os.path.basename(os.path.dirname(filename))
 
             if relative_output:
                 assets_dir = os.path.join(os.path.dirname(nkfile), relative_output)
             else:
-                asset_type = get_asset_type(filename, _is_sequence)
+                asset_type = get_asset_category(filename, sequence_file)
                 assets_dir = os.path.join(os.path.dirname(nkfile), "assets", asset_type)
 
             if not os.path.isdir(assets_dir):
                 os.makedirs(assets_dir)
 
-            if _is_sequence:
-                sequence = get_sequence(filename)
+            if sequence_file:
+                sequence = list_sequence_files(filename)
                 sequence_dir = os.path.join(
-                    assets_dir, dirname + "_" + get_name_no_padding(filename)
+                    assets_dir, dirname + "_" + get_sequence_stem(filename)
                 )
 
                 if not os.path.isdir(sequence_dir):
@@ -79,7 +81,7 @@ def collect(nodes=None, relative_output=None, ignore_levels=0):
 
                 for frame in sequence:
                     dst = os.path.join(sequence_dir, os.path.basename(frame))
-                    copy(frame, dst, as_link=True, force=True)
+                    copy_file(frame, dst, as_link=True, force=True)
 
                     if progress.isCancelled():
                         break
@@ -92,7 +94,7 @@ def collect(nodes=None, relative_output=None, ignore_levels=0):
 
             else:
                 new_filename = "{}/{}_{}".format(assets_dir, dirname, basename)
-                copy(filename, new_filename, as_link=True)
+                copy_file(filename, new_filename, as_link=True)
 
                 percent += section
                 progress.setMessage("Copying: {0} ...".format(filename))
@@ -116,21 +118,21 @@ def collect(nodes=None, relative_output=None, ignore_levels=0):
     nuke.message(collected_files)
 
 
-def get_nodes_with_files(_nodes=None):
-    if _nodes is None:
-        _nodes = nuke.allNodes(recurseGroups=True)
+def get_nodes_with_file_knobs(nodes=None):
+    if nodes is None:
+        nodes = nuke.allNodes(recurseGroups=True)
 
     knobs_files = ["file", "proxy", "vfield_file", "font"]
-    nodes = []
-    node_paths = []
+    file_nodes = []
+    node_paths = set()
 
-    for node in _nodes:
+    for node in nodes:
         if node.Class() in exclude_nodes:
             continue
 
         knobs = []
         for knob in knobs_files:
-            if not knob in node.knobs():
+            if knob not in node.knobs():
                 continue
 
             filename = node[knob].value()
@@ -138,7 +140,7 @@ def get_nodes_with_files(_nodes=None):
             if not filename:
                 continue
 
-            if not type(filename) == str:
+            if type(filename) is not str:
                 continue
 
             if filename[0] == "[":
@@ -152,13 +154,13 @@ def get_nodes_with_files(_nodes=None):
         if node.fullName() in node_paths:
             continue
 
-        node_paths.append(node.fullName())
-        nodes.append({"node": node, "knobs": knobs})
+        node_paths.add(node.fullName())
+        file_nodes.append({"node": node, "knobs": knobs})
 
-    return nodes
+    return file_nodes
 
 
-def get_asset_type(filename, sequence):
+def get_asset_category(filename, sequence):
     ext = get_extension(filename).lower()
 
     if sequence:
@@ -180,7 +182,7 @@ def get_asset_type(filename, sequence):
     return type_name
 
 
-def copy(src, dst, as_link=False, force=False):
+def copy_file(src, dst, as_link=False, force=False):
     if not os.path.isfile(src):
         return
 
@@ -193,7 +195,7 @@ def copy(src, dst, as_link=False, force=False):
 
         try:
             os.link(src, dst)
-        except:
+        except OSError:
             shutil.copy(src, dst)
     else:
         shutil.copy(src, dst)

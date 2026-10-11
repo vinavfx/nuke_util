@@ -5,31 +5,25 @@
 # -----------------------------------------------------------
 import nuke  # type: ignore
 
-try:
-    from PySide6.QtGui import QCursor, QTransform  # type: ignore
-    from PySide6.QtCore import QPoint, QRectF  # type: ignore
-    from PySide6.QtWidgets import QApplication  # type: ignore
-    import shiboken6 as shiboken  # type: ignore
-except ImportError:
-    from PySide2.QtGui import QCursor, QTransform
-    from PySide2.QtCore import QPoint, QRectF
-    from PySide2.QtWidgets import QApplication
-    import shiboken2 as shiboken
+from .pyside import QApplication, QCursor, QPoint, QRectF, QTransform
 
-app = shiboken.wrapInstance(shiboken.getCppPointer(QApplication.instance())[0], QApplication)  # type: ignore
+app = QApplication.instance()
 
 
 def get_dag_widgets(visible=True):
     dags = []
-    all_widgets = app.allWidgets()
+    application = app or QApplication.instance()
+    if application is None:
+        return dags
+    all_widgets = QApplication.allWidgets()
     for widget in all_widgets:
         if "DAG" in widget.objectName():
-            if not visible or (visible and widget.isVisible()):
+            if not visible or widget.isVisible():
                 dags.append(widget)
     return dags
 
 
-def get_current_dag():
+def get_active_dag_widget():
     visible_dags = get_dag_widgets(visible=True)
     for dag in visible_dags:
         if dag.hasFocus():
@@ -39,8 +33,8 @@ def get_current_dag():
         return visible_dags[0]
 
 
-def cursor_position():
-    dag = get_current_dag()
+def get_cursor_graph_position():
+    dag = get_active_dag_widget()
     if not dag:
         return 0, 0
 

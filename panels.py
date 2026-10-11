@@ -5,21 +5,15 @@
 # -----------------------------------------------------------
 import nuke  # type: ignore
 
-from .pyside import (  # type: ignore
-    Qt,  # type: ignore
-    QApplication,  # type: ignore
-    QWidget,  # type: ignore
-    QStackedWidget,  # type: ignore
-    QDialog,  # type: ignore
-    QScreen,  # type: ignore
-)
+from .pyside import QApplication, QDialog, QScreen, QStackedWidget, Qt, QWidget
 
 if not hasattr(nuke, "panels"):
     nuke.panels = {}
+if not hasattr(nuke, "float_panels"):
     nuke.float_panels = {}
 
 
-def init(widget_name, label, stacked_widget=None):
+def register_docked_panel(widget_name, label, stacked_widget=None):
     if not nuke.GUI:
         return
 
@@ -57,10 +51,11 @@ def init(widget_name, label, stacked_widget=None):
     if stacked_widget:
         last_focus_widget = QApplication.focusWidget()
         stacked_widget.setFocus()
-        add_panel()
-
-        if last_focus_widget:
-            last_focus_widget.setFocus()
+        try:
+            add_panel()
+        finally:
+            if last_focus_widget:
+                last_focus_widget.setFocus()
 
     return panel
 
@@ -70,7 +65,7 @@ def show_panel(panel_name, panel, minimum_size=None):
     is_docked = False
 
     if widget is not None:
-        stacked_widget, child = get_stacked_widget(widget)
+        stacked_widget, child = find_stacked_widget_parent(widget)
         if stacked_widget and child:
             stacked_widget.setCurrentWidget(child)
             is_docked = True
@@ -94,7 +89,7 @@ def show_panel(panel_name, panel, minimum_size=None):
     return widget
 
 
-def init_float_panel(widget, name):
+def create_floating_panel(widget, name):
     if name in nuke.float_panels:
         return
 
@@ -102,23 +97,7 @@ def init_float_panel(widget, name):
     nuke.float_panels[name] = main_widget
 
 
-def close_panel(panel_name):
-    if panel_name not in nuke.panels:
-        return
-
-    widget = nuke.panels[panel_name]()
-    if not widget:
-        return
-
-    stacked_widget, child = get_stacked_widget(widget)
-
-    if stacked_widget and child:
-        stacked_widget.removeWidget(child)
-
-    return stacked_widget
-
-
-def get_stacked_widget(widget):
+def find_stacked_widget_parent(widget):
     pwidget = widget
 
     for _ in range(10):
@@ -141,12 +120,13 @@ class float_panel_widget(QDialog):
         self.setWindowFlags(Qt.Tool)
 
     def center_window(self):
-        centerPoint = QScreen.availableGeometry(QApplication.primaryScreen()).center()
-
-        fg = self.frameGeometry()
-        fg.moveCenter(centerPoint)
-
-        self.move(fg.topLeft())
+        screen = QApplication.primaryScreen()
+        if screen is None:
+            return
+        center = QScreen.availableGeometry(screen).center()
+        frame = self.frameGeometry()
+        frame.moveCenter(center)
+        self.move(frame.topLeft())
 
     def showEvent(self, event):
         super().showEvent(event)
@@ -167,7 +147,7 @@ class panel_widget(QWidget):
         self.margin = None
 
     def remove_parents_margin(self):
-        stacked_widget, _ = get_stacked_widget(self)
+        stacked_widget, _ = find_stacked_widget_parent(self)
 
         if not stacked_widget:
             return
