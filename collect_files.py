@@ -16,6 +16,7 @@ exclude_nodes = ["Write"]
 
 def collect_external_files(nodes=None, relative_output=None, ignore_levels=0):
     collected_files = ""
+    relocated_files = {}
     count = 0
 
     nkfile = get_project_path()
@@ -101,6 +102,8 @@ def collect_external_files(nodes=None, relative_output=None, ignore_levels=0):
                 progress.setProgress(int(percent))
 
             file_knob.setValue(new_filename)
+            if file_knob_name == "file":
+                relocated_files[filename] = new_filename
             collected_files += "{} - {}\n".format(node.name(), basename)
 
             if progress.isCancelled():
@@ -116,6 +119,7 @@ def collect_external_files(nodes=None, relative_output=None, ignore_levels=0):
 
     collected_files = "Collected files:\n\n{}".format(collected_files)
     nuke.message(collected_files)
+    return relocated_files
 
 
 def get_nodes_with_file_knobs(nodes=None):
