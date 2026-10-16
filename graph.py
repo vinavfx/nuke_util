@@ -108,10 +108,12 @@ def resolve_input_node(node, i, ignore_disabled=True, active_switch=False):
         return input_node
 
 
-def get_input_connections(node):
+def get_input_connections(node, ignore_dots=False):
     input_nodes = []
     for index in range(node.inputs()):
         input_node = node.input(index)
+        if ignore_dots:
+            input_node = resolve_input_node(node, index, ignore_disabled=False)
         if input_node:
             input_nodes.append((index, input_node))
     return input_nodes
