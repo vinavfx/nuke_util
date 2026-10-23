@@ -5,11 +5,15 @@ import re
 
 try:
     from PySide6 import QtCore, QtGui, QtWidgets
+    from shiboken6 import isValid
 
+    is_valid = isValid
     QtVersion = 6
 except ImportError:
     from PySide2 import QtCore, QtGui, QtWidgets  # type: ignore
+    from shiboken2 import isValid  # type: ignore
 
+    is_valid = isValid
     QtVersion = 2
 
 

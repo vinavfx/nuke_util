@@ -6,6 +6,9 @@
 import nuke  # type: ignore
 
 from .pyside import QApplication, QDialog, QScreen, QStackedWidget, Qt, QWidget
+from .pyside import is_valid
+
+panel_factories = {}
 
 if not hasattr(nuke, "panels"):
     nuke.panels = {}
@@ -39,10 +42,14 @@ def register_docked_panel(widget_name, label, stacked_widget=None):
 
     name = label.lower().replace(" ", "_")
 
-    panel = Panel(label, name, widget_name)
+    def create_panel():
+        return Panel(label, name, widget_name)
+
+    panel_factories[name] = create_panel
+    panel = create_panel()
 
     def add_panel():
-        return panel.addToPane()
+        return create_panel().addToPane()
 
     menu = nuke.menu("Pane")
     menu.addCommand(label, add_panel)
@@ -60,8 +67,13 @@ def register_docked_panel(widget_name, label, stacked_widget=None):
     return panel
 
 
-def show_panel(panel_name, panel, minimum_size=None):
+def get_panel_widget(panel_name):
     widget = nuke.panels[panel_name]()
+    return widget if widget is not None and is_valid(widget) else None
+
+
+def show_panel(panel_name, panel, minimum_size=None):
+    widget = get_panel_widget(panel_name)
     is_docked = False
 
     if widget is not None:
@@ -70,12 +82,18 @@ def show_panel(panel_name, panel, minimum_size=None):
             stacked_widget.setCurrentWidget(child)
             is_docked = True
 
+    if widget is not None and not is_valid(widget):
+        widget = None
+        is_docked = False
+
     if not is_docked and (widget is None or not widget.isVisible()):
         if panel is None:
             return
 
+        if panel_name in panel_factories:
+            panel = panel_factories[panel_name]()
         panel.show()
-        widget = nuke.panels[panel_name]()
+        widget = get_panel_widget(panel_name)
         if widget is not None and minimum_size:
             window = widget.window()
             width, height = minimum_size
