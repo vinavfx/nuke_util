@@ -10,7 +10,8 @@ import re
 import nuke  # type: ignore
 
 BACKDROP_CLASS = "BackdropNode"
-EXCLUDED_CLASSES = ("Dot", BACKDROP_CLASS, "StickyNote", "Viewer", "Root")
+VIEWER_CLASS = "Viewer"
+EXCLUDED_CLASSES = ("Dot", BACKDROP_CLASS, "StickyNote", VIEWER_CLASS, "Root")
 DEFAULT_NODE_SIZE = (80, 18)
 DOT_SIZE = (12, 12)
 DEFAULT_GRID_WIDTH = 110.0
@@ -41,6 +42,13 @@ STACK_INDEX = -2
 STACK_PER_ROW = 10
 STACK_COLUMN_SPACING = 100
 STACK_ROW_GAP = 20
+MAX_LOOSE_CHAIN = 3
+LOOSE_PER_ROW = 10
+LOOSE_GAP = 10
+LOOSE_COLUMN_GAP = 20
+LOOSE_ROW_GAP = 40
+LOOSE_GROUPS = (("Inputs", 0x5D6B80FF, True), ("Trash", 0x4D4D4DFF, False))
+LINK_FLAGS = nuke.INPUTS | nuke.HIDDEN_INPUTS | nuke.EXPRESSIONS | nuke.LINKINPUTS
 
 size_cache = {}
 link_cache = {}
@@ -138,6 +146,7 @@ class Forest(object):
         self.cross_edges = []
         claimed = set()
         sizes = {root: upstream_count(graph, root) for root in self.roots}
+        self.sizes = sizes
         claim_order = sorted(
             self.roots, key=lambda root: (-sizes[root], root.fullName())
         )
@@ -236,6 +245,43 @@ def file_key(node):
     path = nuke.filename(node) or ""
     path = re.sub(r"%0?(\d*)d", lambda match: "#" * int(match.group(1) or 1), path)
     return os.path.normcase(os.path.normpath(path)) if path else None
+
+
+def is_isolated(node, names, is_top):
+    if len(connected_indices(node)) != (0 if is_top else 1):
+        return False
+    links = node.dependent(LINK_FLAGS, True) + node.dependencies(LINK_FLAGS)
+    return all(
+        other.fullName() in names or other.Class() in EXCLUDED_CLASSES
+        for other in links
+    )
+
+
+def loose_chain(graph, bottom):
+    chain = [bottom]
+    while graph.inputs[chain[0]]:
+        inputs = graph.inputs[chain[0]]
+        if len(chain) >= MAX_LOOSE_CHAIN or len(inputs) != 1 or inputs[0][0] < 0:
+            return None
+        source = inputs[0][1]
+        if len(graph.consumers[source]) != 1:
+            return None
+        chain.insert(0, source)
+    is_input = chain[0].Class() in READ_CLASSES
+    if is_input and any(connected_indices(node) not in ([], [0]) for node in chain):
+        return None
+    names = set(node.fullName() for node in chain)
+    if all(is_isolated(node, names, node is chain[0]) for node in chain):
+        return chain
+
+
+def take_loose_chains(graph):
+    roots = [node for node in graph.nodes if not graph.consumers[node]]
+    chains = [loose_chain(graph, root) for root in roots]
+    chains = [chain for chain in chains if chain]
+    loose = set(node for chain in chains for node in chain)
+    graph.nodes = [node for node in graph.nodes if node not in loose]
+    return sorted(chains, key=lambda chain: stack_order(chain[0]))
 
 
 def is_gizmo(node):
@@ -1279,13 +1325,14 @@ def push_nodes(nodes, conflict, step):
 def restore_backdrops(records, nodes, anchor):
     chosen = choose_clusters(records)
     step = column_step(grid_width())
-    origin = anchor.xpos(), anchor.ypos()
+    origin = (anchor.xpos(), anchor.ypos()) if anchor else (0, 0)
     for _ in range(len(nodes) + 1):
         conflict = find_conflict(chosen, fit_boxes(chosen), nodes)
         if conflict is None:
             break
         push_nodes(nodes, conflict, step)
-    offset_x, offset_y = origin[0] - anchor.xpos(), origin[1] - anchor.ypos()
+    offset_x = origin[0] - anchor.xpos() if anchor else 0
+    offset_y = origin[1] - anchor.ypos() if anchor else 0
     if offset_x or offset_y:
         for node in nodes:
             node.setXYpos(node.xpos() + offset_x, node.ypos() + offset_y)
@@ -1294,31 +1341,130 @@ def restore_backdrops(records, nodes, anchor):
     return [backdrop for backdrop, _, _ in chosen]
 
 
-def arrange_candidates(candidates, select_new_dots=False):
+def arrange_candidates(candidates, select_new_dots=False, replace_viewer=False):
     nodes = [node for node in candidates if node.Class() not in EXCLUDED_CLASSES]
     backdrops = [node for node in candidates if node.Class() == BACKDROP_CLASS]
+    skipped = ("Dot", BACKDROP_CLASS) + ((VIEWER_CLASS,) if replace_viewer else ())
     untouched = [
         node
         for node in candidates
-        if node.Class() in EXCLUDED_CLASSES
-        and node.Class() not in ("Dot", BACKDROP_CLASS)
+        if node.Class() in EXCLUDED_CLASSES and node.Class() not in skipped
     ]
+    viewers = [node for node in candidates if node.Class() == VIEWER_CLASS]
     records = record_backdrops(backdrops, nodes)
     remove_dots(candidates)
     if not nodes:
         return backdrops + untouched
-    placed, anchor = arrange(nodes, select_new_dots)
-    return placed + restore_backdrops(records, placed, anchor) + untouched
+    placed, anchor, chains, output = arrange(nodes, select_new_dots)
+    loose = set(node.fullName() for chain in chains for node in chain)
+    records = [
+        (record[0], [node for node in record[1] if node.fullName() not in loose])
+        + record[2:]
+        for record in records
+    ]
+    restored = restore_backdrops(records, placed, anchor)
+    grouped = place_loose(chains, placed, restored, select_new_dots)
+    if replace_viewer:
+        untouched.append(replace_viewers(viewers, nodes[0].parent(), output))
+    return placed + restored + grouped + untouched
+
+
+def replace_viewers(viewers, context, output):
+    for viewer in viewers:
+        nuke.delete(viewer)
+    with context:
+        viewer = nuke.nodes.Viewer()
+    if output is not None:
+        viewer.setInput(0, output)
+        width, height = node_size(output)
+        x = output.xpos() + (width - node_size(viewer)[0]) / 2.0
+        y = output.ypos() + height + TIGHT_GAP
+        viewer.setXYpos(int(round(x)), int(round(y)))
+    return viewer
+
+
+def main_output(forest):
+    roots = [root for root in forest.roots if root not in forest.isolated]
+    return max(
+        roots or forest.roots,
+        key=lambda root: (forest.sizes[root], root.ypos(), root.fullName()),
+    )
+
+
+def chain_size(chain):
+    sizes = [node_size(node) for node in chain]
+    height = sum(size[1] for size in sizes) + (len(chain) - 1) * LOOSE_GAP
+    return max(size[0] for size in sizes), height
+
+
+def layout_chains(chains, left, bottom):
+    pitch = max(chain_size(chain)[0] for chain in chains) + LOOSE_COLUMN_GAP
+    starts = range(0, len(chains), LOOSE_PER_ROW)
+    rows = [chains[start:][:LOOSE_PER_ROW] for start in starts]
+    heights = [max(chain_size(chain)[1] for chain in row) for row in rows]
+    top = bottom - sum(heights) - (len(rows) - 1) * LOOSE_ROW_GAP
+    for row, height in zip(rows, heights):
+        for column, chain in enumerate(row):
+            center_x = left + column * pitch + (pitch - LOOSE_COLUMN_GAP) / 2.0
+            y = top
+            for node in chain:
+                width, node_height = node_size(node)
+                node.setXYpos(int(round(center_x - width / 2.0)), int(round(y)))
+                y += node_height + LOOSE_GAP
+        top += height + LOOSE_ROW_GAP
+
+
+def create_backdrop(context, label, color, select):
+    with context:
+        backdrop = nuke.nodes.BackdropNode(label=label, tile_color=color)
+    backdrop.setSelected(select)
+    return backdrop
+
+
+def layout_bounds(chains, placed, restored):
+    bounds = [node_bounds(node) for node in placed]
+    bounds += [backdrop_bounds(backdrop) for backdrop in restored]
+    if not bounds:
+        bounds = [node_bounds(node) for chain in chains for node in chain]
+        return min(item[0] for item in bounds), max(item[3] for item in bounds)
+    top = min(item[1] for item in bounds) - BLOCK_GAP - BACKDROP_PADDING
+    return min(item[0] for item in bounds) + BACKDROP_PADDING, top
+
+
+def place_loose(chains, placed, restored, select):
+    if not chains:
+        return []
+    left, bottom = layout_bounds(chains, placed, restored)
+    context = chains[0][0].parent()
+    grouped = []
+    for label, color, is_input in LOOSE_GROUPS:
+        group = [
+            chain for chain in chains if (chain[0].Class() in READ_CLASSES) is is_input
+        ]
+        if not group:
+            continue
+        layout_chains(group, left, bottom)
+        members = [node for chain in group for node in chain]
+        bounds = fitted_bounds(members)
+        backdrop = create_backdrop(context, label, color, select)
+        fit_backdrop(backdrop, bounds)
+        left = bounds[2] + BACKDROP_MARGIN * 2 + BACKDROP_PADDING
+        grouped += members + [backdrop]
+    return grouped
 
 
 def arrange(nodes, select_new_dots=False):
     size_cache.clear()
     link_cache.clear()
     reset_hidden_inputs(nodes)
-    forest = Forest(Graph(nodes))
+    graph = Graph(nodes)
+    chains = take_loose_chains(graph)
+    if not graph.nodes:
+        return [], None, chains, None
+    forest = Forest(graph)
     placement, hidden = solve_layout(forest, grid_width())
     placed = apply_placement(placement, hidden, select_new_dots)
-    return placed, placement.anchor
+    return placed, placement.anchor, chains, main_output(forest)
 
 
 def main():
@@ -1328,7 +1474,7 @@ def main():
     undo = nuke.Undo()
     undo.begin("Arrange Nodes")
     try:
-        arrange_candidates(candidates, bool(selected))
+        arrange_candidates(candidates, bool(selected), not selected)
     finally:
         undo.end()
     if not has_nodes:
