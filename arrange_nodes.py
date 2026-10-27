@@ -4,6 +4,7 @@
 # WEBSITE -------> https://vinavfx.com
 # -----------------------------------------------------------
 import math
+import os
 import re
 
 import nuke  # type: ignore
@@ -31,6 +32,15 @@ BACKDROP_PADDING = 40
 BACKDROP_FONT = "Verdana"
 BACKDROP_FONT_SIZE = 20
 BACKDROP_MARGIN = 30
+GIZMO_KNOB = "comfyui_gizmo"
+GENERATION_SUFFIXES = ("Backup", "Restored")
+READ_CLASSES = ("Read", "DeepRead", "ReadGeo", "ReadGeo2")
+WRITE_CLASSES = ("Write", "DeepWrite", "WriteGeo")
+VIRTUAL_INDEX = -1
+STACK_INDEX = -2
+STACK_PER_ROW = 10
+STACK_COLUMN_SPACING = 100
+STACK_ROW_GAP = 20
 
 size_cache = {}
 link_cache = {}
@@ -47,12 +57,27 @@ class RouteDot(HiddenDot):
     pass
 
 
+class ReadStack(object):
+    def __init__(self, reads):
+        self.reads = reads
+        sizes = [node_size(read) for read in reads]
+        columns = min(len(reads), STACK_PER_ROW)
+        rows = int(math.ceil(len(reads) / float(STACK_PER_ROW)))
+        self.read_height = max(height for _, height in sizes)
+        self.pitch = self.read_height + STACK_ROW_GAP
+        self.width = (columns - 1) * STACK_COLUMN_SPACING + max(
+            width for width, _ in sizes
+        )
+        self.height = (rows - 1) * self.pitch + self.read_height
+
+
 class Slots(object):
     def __init__(self):
         self.trunk = None
         self.sides = {}
         self.extras = []
         self.fan = []
+        self.stacks = []
 
     def side_children(self):
         return [(side, self.sides[side]) for side in (-1, 1) if side in self.sides]
@@ -78,6 +103,32 @@ class Graph(object):
                     continue
                 self.inputs[target].append((index, source))
                 self.consumers[source].append((target, index))
+        for owner, reads in generation_reads(self):
+            self.add_stack(owner, reads)
+        for source, target in related_pairs(self.nodes):
+            self.add_virtual_link(source, target)
+
+    def add_edge(self, source, target, index):
+        self.inputs[target].insert(0, (index, source))
+        self.consumers[source].append((target, index))
+        self.linked.update((source, target))
+
+    def add_stack(self, owner, reads):
+        stack = ReadStack(reads)
+        self.nodes = [node for node in self.nodes if node not in reads]
+        self.inputs[stack] = []
+        self.consumers[stack] = []
+        self.add_edge(stack, owner, STACK_INDEX)
+
+    def add_virtual_link(self, source, target):
+        if self.consumers[source]:
+            return
+        if any(index == VIRTUAL_INDEX for index, _ in self.inputs[target]):
+            return
+        if target in upstream_nodes(self, source):
+            return
+        self.add_edge(source, target, VIRTUAL_INDEX)
+        link_cache[(source, target)] = True
 
 
 class Forest(object):
@@ -141,7 +192,7 @@ class Placement(object):
         self.last_height = DEFAULT_NODE_SIZE[1]
 
 
-def upstream_count(graph, root):
+def upstream_nodes(graph, root):
     visited = set([root])
     stack = [root]
     while stack:
@@ -149,7 +200,61 @@ def upstream_count(graph, root):
             if source not in visited:
                 visited.add(source)
                 stack.append(source)
-    return len(visited)
+    return visited
+
+
+def upstream_count(graph, root):
+    return len(upstream_nodes(graph, root))
+
+
+def is_generation_read(node, gizmo):
+    if node.Class() not in READ_CLASSES:
+        return False
+    name = node.fullName()
+    prefix = gizmo.fullName()
+    return any(name.startswith(prefix + suffix) for suffix in GENERATION_SUFFIXES)
+
+
+def stack_order(node):
+    return node.ypos(), node.xpos(), node.fullName()
+
+
+def generation_reads(graph):
+    by_name = {node.fullName(): node for node in graph.nodes}
+    for gizmo in [node for node in graph.nodes if is_gizmo(node)]:
+        reads = [
+            node
+            for node in graph.nodes
+            if node not in graph.linked and is_generation_read(node, gizmo)
+        ]
+        if reads:
+            owner = by_name.get(gizmo.fullName() + "Read", gizmo)
+            yield owner, sorted(reads, key=stack_order)
+
+
+def file_key(node):
+    path = nuke.filename(node) or ""
+    path = re.sub(r"%0?(\d*)d", lambda match: "#" * int(match.group(1) or 1), path)
+    return os.path.normcase(os.path.normpath(path)) if path else None
+
+
+def is_gizmo(node):
+    return node.knob(GIZMO_KNOB) is not None
+
+
+def related_pairs(nodes):
+    by_name = {node.fullName(): node for node in nodes}
+    reads = {}
+    for node in nodes:
+        if node.Class() in READ_CLASSES:
+            reads.setdefault(file_key(node), node)
+    reads.pop(None, None)
+    for node in nodes:
+        main_read = by_name.get(node.fullName() + "Read")
+        if is_gizmo(node) and main_read is not None:
+            yield node, main_read
+        elif node.Class() in WRITE_CLASSES and file_key(node) in reads:
+            yield node, reads[file_key(node)]
 
 
 def position_key(node):
@@ -168,6 +273,8 @@ def connected_inputs(node):
 def node_size(key):
     if isinstance(key, HiddenDot):
         return DOT_SIZE
+    if isinstance(key, ReadStack):
+        return key.width, key.read_height
     if key not in size_cache:
         size_cache[key] = measure_node(key)
     return size_cache[key]
@@ -183,7 +290,7 @@ def measure_node(node):
 
 
 def mask_input_index(node):
-    if isinstance(node, HiddenDot):
+    if isinstance(node, (HiddenDot, ReadStack)):
         return None
     has_mask = any(
         node.knob(name) is not None for name in ("maskChannelInput", "maskChannel")
@@ -266,13 +373,24 @@ def assign_fan(node, items, blocked, weights):
 
 
 def assign_slots(node, items, blocked, balance, weights):
-    if len(items) >= FAN_INPUTS:
-        return assign_fan(node, items, blocked, weights)
+    inputs = [item for item in items if item[0] != STACK_INDEX]
+    if len(inputs) >= FAN_INPUTS:
+        slots = assign_fan(node, inputs, blocked, weights)
+    else:
+        slots = assign_inputs(node, inputs, blocked, balance, weights)
+    slots.stacks = [child for index, child in items if index == STACK_INDEX]
+    return slots
+
+
+def assign_inputs(node, items, blocked, balance, weights):
     slots = Slots()
     mask = mask_input_index(node)
     ordered = sorted(items, key=lambda item: item[0])
     candidates = [item for item in ordered if item[0] != mask]
-    if candidates:
+    virtual = [item for item in candidates if item[0] == VIRTUAL_INDEX]
+    if virtual:
+        slots.trunk = virtual[0][1]
+    elif candidates:
         slots.trunk = max(candidates, key=lambda item: weights.get(item[1], 1))[1]
     balance = dict(balance)
     side_items = [item for item in ordered if item[1] is not slots.trunk]
@@ -332,7 +450,7 @@ def compute_slots(root, children):
         for side, child in current.side_children():
             index = child_index(children, key, child)
             stack.append((child, -side, (key, index, side), new_balance()))
-        for child in current.extras + current.fan:
+        for child in current.extras + current.fan + current.stacks:
             stack.append((child, 0, None, new_balance()))
     return slots
 
@@ -442,12 +560,28 @@ def trunk_shift(contour, child_contour, start):
     return shift
 
 
+def stack_contour(stack):
+    half_width = stack.width / 2.0
+    rows = int(math.ceil(stack.height / ROW_UNIT)) + 1
+    return {row: [-half_width, half_width] for row in range(rows)}
+
+
 def layout_node(key, slots, contours, relative, step):
+    if isinstance(key, ReadStack):
+        return stack_contour(key)
     half_width = node_size(key)[0] / 2.0
     contour = {0: [-half_width, half_width]}
     if slots.fan:
         layout_fan(contour, slots, contours, relative, step)
-        return contour
+    else:
+        layout_inputs(key, contour, slots, contours, relative, step)
+    for child in slots.stacks:
+        offset = side_offset(contour, contours[child], 1, 0, step)
+        attach_child(child, offset, 0, contour, contours, relative)
+    return contour
+
+
+def layout_inputs(key, contour, slots, contours, relative, step):
     for side, child in slots.side_children():
         spine = with_spine(contour, contours[child], 0)
         offset = side_offset(spine, contours[child], side, 0, step)
@@ -461,7 +595,6 @@ def layout_node(key, slots, contours, relative, step):
         offset = side_offset(contour, contours[child], -1, -NORMAL_ROWS, step)
         attach_child(child, offset, -NORMAL_ROWS, contour, contours, relative)
         reserve_link(contour, -NORMAL_ROWS, offset)
-    return contour
 
 
 def reserve_link(contour, row_shift, offset):
@@ -687,8 +820,9 @@ def add_segment(placement, source, target):
 
 def collect_segments(placement, children):
     for parent, items in children.items():
-        for _, child in items:
-            add_segment(placement, child, parent)
+        for index, child in items:
+            if index != STACK_INDEX:
+                add_segment(placement, child, parent)
 
 
 def compute_placement(forest, hidden, grid):
@@ -751,6 +885,11 @@ def node_rect(placement, key):
 def measure_rect(placement, key):
     center_x, center_y = placement.centers[key]
     width, height = node_size(key)
+    if isinstance(key, ReadStack):
+        left = center_x - width / 2.0 - LINE_CLEARANCE
+        top = center_y - height / 2.0 - LINE_CLEARANCE
+        bottom = top + key.height + 2 * LINE_CLEARANCE
+        return left, top, left + width + 2 * LINE_CLEARANCE, bottom
     half_width = width / 2.0 + LINE_CLEARANCE
     half_height = height / 2.0 + LINE_CLEARANCE
     return (
@@ -855,8 +994,18 @@ def create_hidden_dot(dot, select):
     return node
 
 
+def place_stack(stack, center):
+    left = center[0] - stack.width / 2.0
+    top = center[1] - stack.read_height / 2.0
+    for index, read in enumerate(stack.reads):
+        row, column = divmod(index, STACK_PER_ROW)
+        x = left + column * STACK_COLUMN_SPACING
+        read.setXYpos(int(round(x)), int(round(top + row * stack.pitch)))
+    return stack.reads
+
+
 def apply_placement(placement, hidden, select):
-    nodes = {key: key for key in placement.centers}
+    nodes = {key: key for key in placement.centers if not isinstance(key, ReadStack)}
     for edge, dot in hidden.items():
         if dot is None:
             edge[1]["hide_input"].setValue(True)
@@ -866,6 +1015,11 @@ def apply_placement(placement, hidden, select):
         if isinstance(key, RouteDot):
             nodes[key] = create_dot(key, select)
     for key, (center_x, center_y) in placement.centers.items():
+        if isinstance(key, ReadStack):
+            nodes.update(
+                (read, read) for read in place_stack(key, (center_x, center_y))
+            )
+            continue
         width, height = node_size(key)
         x = int(round(center_x - width / 2.0))
         y = int(round(center_y - height / 2.0))
