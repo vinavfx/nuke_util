@@ -242,6 +242,15 @@ def is_gizmo(node):
     return node.knob(GIZMO_KNOB) is not None
 
 
+def written_file(node):
+    if node.Class() in WRITE_CLASSES:
+        return file_key(node)
+    if isinstance(node, nuke.Group):
+        for inner in node.nodes():
+            if inner.Class() in WRITE_CLASSES:
+                return file_key(inner)
+
+
 def related_pairs(nodes):
     by_name = {node.fullName(): node for node in nodes}
     reads = {}
@@ -253,8 +262,8 @@ def related_pairs(nodes):
         main_read = by_name.get(node.fullName() + "Read")
         if is_gizmo(node) and main_read is not None:
             yield node, main_read
-        elif node.Class() in WRITE_CLASSES and file_key(node) in reads:
-            yield node, reads[file_key(node)]
+        elif written_file(node) in reads:
+            yield node, reads[written_file(node)]
 
 
 def position_key(node):
