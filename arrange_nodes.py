@@ -1128,16 +1128,24 @@ def restore_backdrops(records, nodes, anchor):
             node.setXYpos(node.xpos() + offset_x, node.ypos() + offset_y)
     for backdrop, bounds in fit_boxes(chosen).items():
         fit_backdrop(backdrop, bounds)
+    return [backdrop for backdrop, _, _ in chosen]
 
 
-def collect_nodes():
-    selected = nuke.selectedNodes()
-    candidates = selected or nuke.allNodes()
+def arrange_candidates(candidates, select_new_dots=False):
     nodes = [node for node in candidates if node.Class() not in EXCLUDED_CLASSES]
     backdrops = [node for node in candidates if node.Class() == BACKDROP_CLASS]
+    untouched = [
+        node
+        for node in candidates
+        if node.Class() in EXCLUDED_CLASSES
+        and node.Class() not in ("Dot", BACKDROP_CLASS)
+    ]
     records = record_backdrops(backdrops, nodes)
     remove_dots(candidates)
-    return nodes, records, bool(selected)
+    if not nodes:
+        return backdrops + untouched
+    placed, anchor = arrange(nodes, select_new_dots)
+    return placed + restore_backdrops(records, placed, anchor) + untouched
 
 
 def arrange(nodes, select_new_dots=False):
@@ -1151,15 +1159,14 @@ def arrange(nodes, select_new_dots=False):
 
 
 def main():
-    nodes = []
+    selected = nuke.selectedNodes()
+    candidates = selected or nuke.allNodes()
+    has_nodes = any(node.Class() not in EXCLUDED_CLASSES for node in candidates)
     undo = nuke.Undo()
     undo.begin("Arrange Nodes")
     try:
-        nodes, records, from_selection = collect_nodes()
-        if nodes:
-            placed, anchor = arrange(nodes, from_selection)
-            restore_backdrops(records, placed, anchor)
+        arrange_candidates(candidates, bool(selected))
     finally:
         undo.end()
-    if not nodes:
+    if not has_nodes:
         nuke.message("No nodes to arrange.")
