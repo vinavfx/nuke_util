@@ -375,13 +375,7 @@ def is_tight_link(child, parent):
 
 
 def measure_tight_link(child, parent):
-    limit = ROW_UNIT - TIGHT_GAP
-    if max(node_size(child)[1], node_size(parent)[1]) > limit:
-        return False
-    if connected_indices(parent) != [0] or connected_indices(child) not in ([], [0]):
-        return False
-    consumers = child.dependent(nuke.INPUTS | nuke.HIDDEN_INPUTS, False)
-    return len(consumers) == 1
+    return connected_inputs(parent) == [child]
 
 
 def column_step(grid_width):
@@ -746,14 +740,25 @@ def row_pitch(upper_height, lower_height, row_grid):
 
 
 def row_offsets(placement, row_grid):
-    heights = row_heights(placement)
-    first, last = min(heights), max(heights)
-    offsets = {first: 0.0}
-    default_height = DEFAULT_NODE_SIZE[1]
-    for row in range(first, last):
-        upper = heights.get(row, default_height)
-        lower = heights.get(row + 1, default_height)
-        offsets[row + 1] = offsets[row] + row_pitch(upper, lower, row_grid)
+    nodes_by_row = {}
+    for key, row in placement.rows.items():
+        nodes_by_row.setdefault(row, []).append(key)
+    first, last = min(nodes_by_row), max(nodes_by_row)
+    offsets = {}
+    previous = []
+    for row in range(first, last + 1):
+        offset = offsets[row - 1] + row_grid if row > first else 0.0
+        current = []
+        for key in nodes_by_row.get(row, ()):
+            width, height = node_size(key)
+            column = placement.columns[key]
+            left, right = column - width / 2.0, column + width / 2.0
+            for upper_left, upper_right, bottom in previous:
+                if left < upper_right and upper_left < right:
+                    offset = max(offset, bottom + TIGHT_GAP + height / 2.0)
+            current.append((left, right, height / 2.0))
+        offsets[row] = offset
+        previous.extend((left, right, offset + half) for left, right, half in current)
     return offsets
 
 
