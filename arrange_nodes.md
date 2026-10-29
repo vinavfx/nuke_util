@@ -16,7 +16,8 @@ por columnas incorporados ese día. No autoriza revertir esos cambios: cualquier
 - Mantener un tronco vertical, con la salida abajo y ramas equilibradas a ambos lados. La rama no máscara con mayor peso continúa por el
   tronco; esta base no impone prioridad al input 0.
 - Favorecer conexiones a 90°. Ocultar las conexiones compartidas que no puedan quedar limpias; usar un Dot oculto junto al destino cuando
-  tenga varias entradas.
+  tenga varias entradas. Los Dots ocultos verticales deben quedar a 78 px del centro del destino cuando haya espacio, sin heredar el
+  estiramiento de las filas del árbol ni modificar los Dots de enrutado.
 - Compactar cadenas simples por input 0 únicamente si el origen no tiene otras salidas, ambos nodos cumplen las condiciones de cadena y su
   altura lo permite. Unidad vertical: 26 px; separación mínima: 8 px.
 - Mantener las ramas cerca del tronco: ante conflictos, extender el tronco hacia arriba antes que alejar las ramas. Reservar unos 150 px

@@ -899,6 +899,26 @@ def collect_segments(placement, children):
                 add_segment(placement, child, parent)
 
 
+def compact_hidden_dots(placement):
+    for dot in placement.centers:
+        if not isinstance(dot, HiddenDot) or isinstance(dot, RouteDot):
+            continue
+        center_x, original_y = placement.centers[dot]
+        target_x, target_y = placement.centers[dot.target]
+        if abs(center_x - target_x) > EPSILON:
+            continue
+        center_y = target_y - NORMAL_ROWS * ROW_UNIT
+        while center_y > original_y:
+            placement.centers[dot] = (center_x, center_y)
+            placement.rects.pop(dot, None)
+            if is_free(placement, dot) and path_is_clear(placement, dot, dot.target):
+                break
+            center_y -= ROW_UNIT
+        else:
+            placement.centers[dot] = (center_x, original_y)
+            placement.rects.pop(dot, None)
+
+
 def compute_placement(forest, hidden, grid):
     children = forest.children_with(hidden)
     step = column_step(grid)
@@ -908,6 +928,7 @@ def compute_placement(forest, hidden, grid):
     anchor = main_output(forest)
     placement.anchor = anchor
     resolve_centers(placement, anchor, ROW_UNIT)
+    compact_hidden_dots(placement)
     collect_segments(placement, children)
     failed = place_pendants(placement, pendants, ROW_UNIT, step)
     return placement, failed
