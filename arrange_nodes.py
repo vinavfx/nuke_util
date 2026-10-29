@@ -423,7 +423,12 @@ def assign_fan(node, items, blocked, weights):
     used = list(slots.sides.values())
     rest = [item for item in by_weight if all(item[1] is not x for x in used)]
     rest.sort(key=lambda item: (-weights.get(item[1], 1), item[0]))
-    slots.fan = [child for _, child in center_out(rest)]
+    ordered = center_out(rest)
+    primary = next((item for item in ordered if item[0] == 0), None)
+    if primary is not None:
+        ordered.remove(primary)
+        ordered.insert(len(ordered) // 2, primary)
+    slots.fan = [child for _, child in ordered]
     return slots
 
 
@@ -442,8 +447,11 @@ def assign_inputs(node, items, blocked, balance, weights):
     mask = mask_input_index(node)
     ordered = sorted(items, key=lambda item: item[0])
     candidates = [item for item in ordered if item[0] != mask]
+    primary = [item for item in candidates if item[0] == 0]
     virtual = [item for item in candidates if item[0] == VIRTUAL_INDEX]
-    if virtual:
+    if primary:
+        slots.trunk = primary[0][1]
+    elif virtual:
         slots.trunk = virtual[0][1]
     elif candidates:
         slots.trunk = max(candidates, key=lambda item: weights.get(item[1], 1))[1]
