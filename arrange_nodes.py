@@ -28,7 +28,7 @@ MAX_ROUTE_COLUMNS = 2
 LINE_CLEARANCE = 6.0
 EPSILON = 0.5
 HIDDEN_DOT_LABEL = "[value input.name]"
-MIN_BACKDROP_NODES = 3
+MIN_BACKDROP_NODES = 2
 BACKDROP_CLUSTER_GAP = 150.0
 BACKDROP_PADDING = 40
 BACKDROP_FONT = "Verdana"
@@ -61,6 +61,7 @@ class HiddenDot(object):
         self.source = source
         self.target = target
         self.index = index
+        self.in_fan_row = False
 
 
 class RouteDot(HiddenDot):
@@ -89,6 +90,7 @@ class Slots(object):
         self.sides = {}
         self.extras = []
         self.fan = []
+        self.fan_center = None
         self.stacks = []
 
     def side_children(self):
@@ -467,34 +469,17 @@ def choose_side(slots, balance, blocked, is_mask):
     return min(sides, key=lambda side: (balance[side], preference.index(side)))
 
 
-def center_out(items):
-    ordered = []
-    for position, item in enumerate(items):
-        if position % 2:
-            ordered.insert(0, item)
-        else:
-            ordered.append(item)
-    return ordered
-
-
-def assign_fan(node, items, blocked, weights):
+def assign_fan(items, blocked):
     slots = Slots()
-    by_weight = sorted(items, key=lambda item: (weights.get(item[1], 1), item[0]))
-    lateral = [item for item in by_weight if item[0] != 0][:2]
-    mask = mask_input_index(node)
-    lateral.sort(key=lambda item: (item[0] == mask, item[0]))
-    for side, (_, child) in zip((-1, 1), lateral):
+    ordered = sorted(items, key=lambda item: item[0])
+    slots.fan_center = ordered[(len(ordered) - 1) // 2][1]
+    for side, (_, child) in zip((-1, 1), (ordered[0], ordered[-1])):
         if side != blocked:
             slots.sides[side] = child
     used = list(slots.sides.values())
-    rest = [item for item in by_weight if all(item[1] is not x for x in used)]
-    rest.sort(key=lambda item: (-weights.get(item[1], 1), item[0]))
-    ordered = center_out(rest)
-    primary = next((item for item in ordered if item[0] == 0), None)
-    if primary is not None:
-        ordered.remove(primary)
-        ordered.insert(len(ordered) // 2, primary)
-    slots.fan = [child for _, child in ordered]
+    slots.fan = [
+        child for _, child in ordered if all(child is not item for item in used)
+    ]
     return slots
 
 
@@ -502,7 +487,7 @@ def assign_slots(node, items, blocked, balance, weights):
     inputs = [item for item in items if item[0] != STACK_INDEX]
     continuation = any(index == GENERATION_INDEX for index, _ in inputs)
     if len(inputs) >= FAN_INPUTS and not continuation:
-        slots = assign_fan(node, inputs, blocked, weights)
+        slots = assign_fan(inputs, blocked)
     else:
         slots = assign_inputs(node, inputs, blocked, balance, weights)
     slots.stacks = [child for index, child in items if index == STACK_INDEX]
@@ -629,21 +614,23 @@ def fan_rows(offsets, step):
     return NORMAL_ROWS + int(math.ceil(reach / step - 1e-9))
 
 
-def pack_row(children, contours, step):
+def pack_row(children, contours, step, center):
     row = {}
     offsets = []
     for child in children:
         offset = side_offset(row, contours[child], 1, 0, step) if offsets else 0.0
         merge_contour(row, contours[child], offset, 0)
         offsets.append(offset)
-    middle = offsets[(len(offsets) - 1) // 2]
+    middle = offsets[children.index(center)]
     return [offset - middle for offset in offsets]
 
 
 def layout_fan(contour, slots, contours, relative, step):
-    offsets = pack_row(slots.fan, contours, step)
+    offsets = pack_row(slots.fan, contours, step, slots.fan_center)
     rows = fan_rows(offsets, step)
     for child, offset in zip(slots.fan, offsets):
+        if isinstance(child, HiddenDot):
+            child.in_fan_row = True
         attach_child(child, offset, -rows, contour, contours, relative)
     reserve_link(contour, -rows, offsets[0])
     reserve_link(contour, -rows, offsets[-1])
@@ -702,6 +689,8 @@ def stack_contour(stack):
 
 
 def layout_node(key, slots, contours, relative, step):
+    if isinstance(key, HiddenDot):
+        key.in_fan_row = False
     if isinstance(key, ReadStack):
         return stack_contour(key)
     half_width = node_size(key)[0] / 2.0
@@ -991,6 +980,8 @@ def collect_segments(placement, children):
 def compact_hidden_dots(placement, step):
     for dot in placement.centers:
         if not isinstance(dot, HiddenDot) or isinstance(dot, RouteDot):
+            continue
+        if dot.in_fan_row:
             continue
         original = placement.centers[dot]
         target_x, target_y = placement.centers[dot.target]

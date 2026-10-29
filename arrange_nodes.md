@@ -29,7 +29,7 @@ por columnas incorporados ese día. No autoriza revertir esos cambios: cualquier
 ## Backdrops
 
 - Registrar sus miembros antes de mover nodos. Después ajustar cada backdrop al mayor conjunto próximo de miembros originales; eliminarlo si
-  quedan menos de tres. Distancia de agrupación: 150 px.
+  quedan menos de dos. Distancia de agrupación: 150 px.
 - Respetar los anidados y apartar nodos ajenos cuando sea posible, desplazando sectores sin romper las alineaciones.
 - Unificar etiquetas sin HTML, fuente Verdana 20, margen interior de 40 px y separación exterior de 30 px.
 
