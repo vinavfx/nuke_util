@@ -40,6 +40,7 @@ READ_CLASSES = ("Read", "DeepRead", "ReadGeo", "ReadGeo2")
 WRITE_CLASSES = ("Write", "DeepWrite", "WriteGeo")
 VIRTUAL_INDEX = -1
 STACK_INDEX = -2
+GENERATION_INDEX = -3
 STACK_PER_ROW = 10
 STACK_COLUMN_SPACING = 100
 STACK_ROW_GAP = 20
@@ -83,6 +84,8 @@ class ReadStack(object):
 class Slots(object):
     def __init__(self):
         self.trunk = None
+        self.continuation = False
+        self.clear_exit = False
         self.sides = {}
         self.extras = []
         self.fan = []
@@ -100,6 +103,8 @@ class Graph(object):
         self.consumers = {node: [] for node in self.nodes}
         self.hidden_sources = set()
         self.linked = set()
+        self.generation_inputs = {}
+        self.generation_roots = set()
         for target in self.nodes:
             hidden = hides_inputs(target)
             for index in range(target.inputs()):
@@ -143,9 +148,19 @@ class Graph(object):
 class Forest(object):
     def __init__(self, graph, chains=()):
         self.loose_width = loose_groups_width(chains)
-        self.roots = [node for node in graph.nodes if not graph.consumers[node]]
+        self.roots = [
+            node
+            for node in graph.nodes
+            if not graph.consumers[node] and node not in graph.generation_roots
+        ]
         self.children = {}
         self.cross_edges = []
+        self.generation_sources = {
+            source
+            for inputs in graph.generation_inputs.values()
+            for index, source in inputs
+            if index == GENERATION_INDEX
+        }
         claimed = set()
         sizes = {root: upstream_count(graph, root) for root in self.roots}
         self.sizes = sizes
@@ -169,12 +184,15 @@ class Forest(object):
         while stack:
             node, consumer, index = stack.pop()
             if consumer is not None:
-                if node in claimed:
-                    self.cross_edges.append((node, consumer, index))
+                deferred = node in self.generation_sources and index != GENERATION_INDEX
+                if node in claimed or deferred:
+                    if index is not None and index >= 0:
+                        self.cross_edges.append((node, consumer, index))
                     continue
                 claimed.add(node)
                 self.children.setdefault(consumer, []).append((index, node))
-            for input_index, source in reversed(graph.inputs[node]):
+            inputs = graph.inputs[node] + graph.generation_inputs.get(node, [])
+            for input_index, source in reversed(inputs):
                 stack.append((source, node, input_index))
 
     def children_with(self, hidden):
@@ -209,7 +227,9 @@ def upstream_nodes(graph, root):
     visited = set([root])
     stack = [root]
     while stack:
-        for _, source in graph.inputs[stack.pop()]:
+        node = stack.pop()
+        inputs = graph.inputs[node] + graph.generation_inputs.get(node, [])
+        for _, source in inputs:
             if source not in visited:
                 visited.add(source)
                 stack.append(source)
@@ -271,12 +291,84 @@ def loose_chain(graph, bottom):
         if len(graph.consumers[source]) != 1:
             return None
         chain.insert(0, source)
+    if any(node in graph.generation_inputs for node in chain):
+        return None
     is_input = chain[0].Class() in READ_CLASSES
     if is_input and any(connected_indices(node) not in ([], [0]) for node in chain):
         return None
     names = set(node.fullName() for node in chain)
     if all(is_isolated(node, names, node is chain[0]) for node in chain):
         return chain
+
+
+def generation_families(graph):
+    by_name = {node.fullName(): node for node in graph.nodes}
+    for gizmo in [node for node in graph.nodes if is_gizmo(node)]:
+        owner = by_name.get(gizmo.fullName() + "Read", gizmo)
+        reads = [node for node in graph.nodes if is_generation_read(node, gizmo)]
+        yield gizmo, owner, reads
+
+
+def downstream_roots(graph, nodes):
+    roots = set()
+    visited = set(nodes)
+    pending = list(nodes)
+    while pending:
+        node = pending.pop()
+        if not graph.consumers[node]:
+            roots.add(node)
+        for target, _ in graph.consumers[node]:
+            if target not in visited:
+                visited.add(target)
+                pending.append(target)
+    return sorted(roots, key=position_key)
+
+
+def integrate_generation_branches(graph):
+    if not graph.nodes:
+        return
+    principal = main_output(Forest(graph))
+    families = list(generation_families(graph))
+    members = upstream_nodes(graph, principal)
+    processed = set()
+    while True:
+        added = False
+        for gizmo, owner, reads in families:
+            relatives = [gizmo, owner] + reads
+            if (
+                not reads
+                or gizmo in processed
+                or not any(node in members for node in relatives)
+            ):
+                continue
+            processed.add(gizmo)
+            added = True
+            roots = downstream_roots(graph, relatives)
+            for read in reads:
+                inputs = [(GENERATION_INDEX, owner)]
+                inputs.extend(
+                    (VIRTUAL_INDEX, root)
+                    for root in roots
+                    if root is not owner
+                    and (root is not principal or read not in members)
+                )
+                graph.generation_inputs[read] = inputs
+                link_cache[(owner, read)] = True
+            graph.generation_roots.update(roots)
+            for node in relatives + roots:
+                members.update(upstream_nodes(graph, node))
+        if not added:
+            if graph.generation_roots:
+                output = max(
+                    graph.generation_roots,
+                    key=lambda node: (
+                        upstream_count(graph, node),
+                        node.ypos(),
+                        node.fullName(),
+                    ),
+                )
+                graph.generation_roots.remove(output)
+            return
 
 
 def take_loose_chains(graph):
@@ -432,7 +524,8 @@ def assign_fan(node, items, blocked, weights):
 
 def assign_slots(node, items, blocked, balance, weights):
     inputs = [item for item in items if item[0] != STACK_INDEX]
-    if len(inputs) >= FAN_INPUTS:
+    continuation = any(index == GENERATION_INDEX for index, _ in inputs)
+    if len(inputs) >= FAN_INPUTS and not continuation:
         slots = assign_fan(node, inputs, blocked, weights)
     else:
         slots = assign_inputs(node, inputs, blocked, balance, weights)
@@ -445,14 +538,21 @@ def assign_inputs(node, items, blocked, balance, weights):
     mask = mask_input_index(node)
     ordered = sorted(items, key=lambda item: item[0])
     candidates = [item for item in ordered if item[0] != mask]
+    generation = [item for item in candidates if item[0] == GENERATION_INDEX]
     primary = [item for item in candidates if item[0] == 0]
     virtual = [item for item in candidates if item[0] == VIRTUAL_INDEX]
-    if primary:
+    if generation:
+        slots.trunk = generation[0][1]
+    elif primary:
         slots.trunk = primary[0][1]
     elif virtual:
         slots.trunk = virtual[0][1]
     elif candidates:
         slots.trunk = max(candidates, key=lambda item: weights.get(item[1], 1))[1]
+    slots.continuation = any(
+        index == GENERATION_INDEX and child is slots.trunk for index, child in ordered
+    )
+    slots.clear_exit = slots.continuation and blocked > 0
     balance = dict(balance)
     side_items = [item for item in ordered if item[1] is not slots.trunk]
     for index, child in sorted(side_items, key=lambda item: -weights.get(item[1], 1)):
@@ -642,16 +742,26 @@ def layout_node(key, slots, contours, relative, step):
     return contour
 
 
+def layout_trunk(key, contour, trunk, contours, relative, clear_exit=False):
+    if trunk is None:
+        return
+    start = -1 if is_tight_link(trunk, key) else -NORMAL_ROWS
+    if clear_exit:
+        start = min(start, -max(contours[trunk]) - NORMAL_ROWS)
+    shift = trunk_shift(contour, contours[trunk], start)
+    attach_child(trunk, 0.0, shift, contour, contours, relative)
+    reserve_link(contour, shift, 0.0)
+
+
 def layout_inputs(key, contour, slots, contours, relative, step):
+    if slots.continuation:
+        layout_trunk(key, contour, slots.trunk, contours, relative, slots.clear_exit)
     for side, child in slots.side_children():
         spine = with_spine(contour, contours[child], 0)
         offset = side_offset(spine, contours[child], side, 0, step)
         attach_child(child, offset, 0, contour, contours, relative)
-    if slots.trunk is not None:
-        start = -1 if is_tight_link(slots.trunk, key) else -NORMAL_ROWS
-        shift = trunk_shift(contour, contours[slots.trunk], start)
-        attach_child(slots.trunk, 0.0, shift, contour, contours, relative)
-        reserve_link(contour, shift, 0.0)
+    if not slots.continuation:
+        layout_trunk(key, contour, slots.trunk, contours, relative)
     for child in slots.extras:
         offset = side_offset(contour, contours[child], -1, -NORMAL_ROWS, step)
         attach_child(child, offset, -NORMAL_ROWS, contour, contours, relative)
@@ -1524,6 +1634,7 @@ def arrange(nodes, select_new_dots=False):
     link_cache.clear()
     reset_hidden_inputs(nodes)
     graph = Graph(nodes)
+    integrate_generation_branches(graph)
     chains = take_loose_chains(graph)
     if not graph.nodes:
         return [], None, chains, None, []
