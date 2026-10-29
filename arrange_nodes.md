@@ -20,7 +20,7 @@ por columnas incorporados ese día. No autoriza revertir esos cambios: cualquier
   tenga varias entradas. Los Dots ocultos verticales deben quedar a 78 px del centro del destino cuando haya espacio, sin heredar el
   estiramiento de las filas del árbol ni modificar los Dots de enrutado.
 - Compactar cadenas simples por input 0 únicamente si el origen no tiene otras salidas, ambos nodos cumplen las condiciones de cadena y su
-  altura lo permite. Unidad vertical: 26 px; separación mínima: 8 px.
+  altura lo permite. Unidad vertical: 26 px; separación mínima: 6 px.
 - Mantener las ramas cerca del tronco: ante conflictos, extender el tronco hacia arriba antes que alejar las ramas. Reservar unos 150 px
   entre bloques cuando sea necesario.
 - Con cuatro o más entradas, colocar dos ramas pequeñas a los lados y las restantes en una fila superior, con las ramas grandes hacia el
