@@ -647,10 +647,8 @@ def layout_fan(contour, slots, contours, relative, step):
         attach_child(child, offset, -rows, contour, contours, relative)
     reserve_link(contour, -rows, offsets[0])
     reserve_link(contour, -rows, offsets[-1])
-    edges = {-1: min(offsets[0], -step), 1: max(offsets[-1], step)}
     for side, child in slots.side_children():
         offset = side_offset(contour, contours[child], side, 0, step)
-        offset = side * max(abs(offset), abs(edges[side]))
         attach_child(child, offset, 0, contour, contours, relative)
 
 
@@ -990,23 +988,39 @@ def collect_segments(placement, children):
                 add_segment(placement, child, parent)
 
 
-def compact_hidden_dots(placement):
+def compact_hidden_dots(placement, step):
     for dot in placement.centers:
         if not isinstance(dot, HiddenDot) or isinstance(dot, RouteDot):
             continue
-        center_x, original_y = placement.centers[dot]
+        original = placement.centers[dot]
         target_x, target_y = placement.centers[dot.target]
-        if abs(center_x - target_x) > EPSILON:
+        delta_x = original[0] - target_x
+        delta_y = original[1] - target_y
+        if abs(delta_x) < EPSILON and delta_y < 0:
+            direction_x, direction_y = 0, -1
+            original_distance = -delta_y
+            spacing = NORMAL_ROWS * ROW_UNIT
+            increment = ROW_UNIT
+        elif abs(delta_y) < EPSILON and abs(delta_x) >= EPSILON:
+            direction_x = -1 if delta_x < 0 else 1
+            direction_y = 0
+            original_distance = abs(delta_x)
+            spacing = step
+            increment = step
+        else:
             continue
-        center_y = target_y - NORMAL_ROWS * ROW_UNIT
-        while center_y > original_y:
-            placement.centers[dot] = (center_x, center_y)
+        distance = spacing
+        while distance < original_distance:
+            placement.centers[dot] = (
+                target_x + direction_x * distance,
+                target_y + direction_y * distance,
+            )
             placement.rects.pop(dot, None)
             if is_free(placement, dot) and path_is_clear(placement, dot, dot.target):
                 break
-            center_y -= ROW_UNIT
+            distance += increment
         else:
-            placement.centers[dot] = (center_x, original_y)
+            placement.centers[dot] = original
             placement.rects.pop(dot, None)
 
 
@@ -1019,7 +1033,7 @@ def compute_placement(forest, hidden, grid):
     anchor = main_output(forest)
     placement.anchor = anchor
     resolve_centers(placement, anchor, ROW_UNIT)
-    compact_hidden_dots(placement)
+    compact_hidden_dots(placement, step)
     collect_segments(placement, children)
     failed = place_pendants(placement, pendants, ROW_UNIT, step)
     return placement, failed
