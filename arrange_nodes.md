@@ -13,6 +13,7 @@ por columnas incorporados ese día. No autoriza revertir esos cambios: cualquier
 
 ## Disposición
 
+- Unificar el tamaño de fuente de los nodos ordenados, Dots nuevos y Viewers a 11; mantener los backdrops a 20.
 - Mantener un tronco vertical, con la salida abajo y ramas equilibradas a ambos lados. La rama no máscara con mayor peso continúa por el
   tronco; esta base no impone prioridad al input 0.
 - Favorecer conexiones a 90°. Ocultar las conexiones compartidas que no puedan quedar limpias; usar un Dot oculto junto al destino cuando

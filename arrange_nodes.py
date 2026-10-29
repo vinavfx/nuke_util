@@ -13,6 +13,7 @@ BACKDROP_CLASS = "BackdropNode"
 VIEWER_CLASS = "Viewer"
 EXCLUDED_CLASSES = ("Dot", BACKDROP_CLASS, "StickyNote", VIEWER_CLASS, "Root")
 DEFAULT_NODE_SIZE = (80, 18)
+NODE_FONT_SIZE = 11
 DOT_SIZE = (12, 12)
 DEFAULT_GRID_WIDTH = 110.0
 MIN_COLUMN_WIDTH = 100.0
@@ -1069,6 +1070,12 @@ def solve_layout(forest, grid):
             hidden[edge] = hidden_marker(edge)
 
 
+def normalize_node_font(node):
+    knob = node.knob("note_font_size")
+    if knob is not None:
+        knob.setValue(NODE_FONT_SIZE)
+
+
 def create_dot(dot, select):
     context = dot.target.parent()
     if context.fullName() == nuke.thisGroup().fullName():
@@ -1076,6 +1083,7 @@ def create_dot(dot, select):
     else:
         with context:
             node = nuke.nodes.Dot()
+    normalize_node_font(node)
     node.setInput(0, dot.source)
     dot.target.setInput(dot.index, node)
     node.setSelected(select)
@@ -1391,6 +1399,8 @@ def arrange_candidates(candidates, select_new_dots=False, replace_viewer=False):
         if node.Class() in EXCLUDED_CLASSES and node.Class() not in skipped
     ]
     viewers = [node for node in candidates if node.Class() == VIEWER_CLASS]
+    for node in nodes + viewers:
+        normalize_node_font(node)
     records = record_backdrops(backdrops, nodes)
     remove_dots(candidates)
     if not nodes:
@@ -1414,6 +1424,7 @@ def replace_viewers(viewers, context, output):
         nuke.delete(viewer)
     with context:
         viewer = nuke.nodes.Viewer()
+    normalize_node_font(viewer)
     if output is not None:
         viewer.setInput(0, output)
         width, height = node_size(output)
