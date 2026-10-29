@@ -38,8 +38,12 @@ por columnas incorporados ese día. No autoriza revertir esos cambios: cualquier
 - Relacionar Write y Read por archivo, normalizando secuencias. Admitir Writes del primer nivel interior de Groups y gizmos.
 - Agrupar cadenas aisladas de hasta tres nodos: Inputs para Reads unidos por input 0; Trash para otras cadenas con una sola entrada
   conectada por nodo, en cualquier índice. Excluir relaciones externas por conexiones, expresiones o Link_Knob y los Reads relacionados.
-- Colocar Inputs encima del árbol y Trash a su derecha. Máximo diez cadenas por fila; 20 px entre columnas, 10 px entre nodos y 40 px entre
-  filas. Las cadenas mayores permanecen como workflows independientes.
+- Identificar el árbol principal con el mismo criterio que el output del Viewer: mayor número de nodos aguas arriba; desempatar por posición
+  vertical de la salida y nombre. Situarlo debajo de los demás árboles.
+- Colocar Inputs y Trash justo encima del principal, alineando el borde izquierdo del conjunto con el del árbol. Reservar el ancho de ambos
+  backdrops y situar los árboles secundarios a su derecha, con sus salidas en una misma línea junto a la base de los backdrops. No usar las
+  filas adicionales de Backups y Restored para alinear las salidas. Máximo diez cadenas por fila; 20 px entre columnas, 10 px entre nodos y
+  40 px entre filas. Las cadenas mayores permanecen como workflows independientes.
 
 ## Viewer e importación
 

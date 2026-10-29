@@ -140,7 +140,8 @@ class Graph(object):
 
 
 class Forest(object):
-    def __init__(self, graph):
+    def __init__(self, graph, chains=()):
+        self.loose_width = loose_groups_width(chains)
         self.roots = [node for node in graph.nodes if not graph.consumers[node]]
         self.children = {}
         self.cross_edges = []
@@ -148,7 +149,9 @@ class Forest(object):
         sizes = {root: upstream_count(graph, root) for root in self.roots}
         self.sizes = sizes
         claim_order = sorted(
-            self.roots, key=lambda root: (-sizes[root], root.fullName())
+            self.roots,
+            key=lambda root: (sizes[root], root.ypos(), root.fullName()),
+            reverse=True,
         )
         for root in claim_order:
             claimed.add(root)
@@ -708,19 +711,22 @@ def tree_shift(contour, cursor, step):
 
 def place_trees(forest, children, step, pendants):
     trees = []
-    for root in forest.ordered_roots(pendants):
+    principal = main_output(forest)
+    roots = forest.ordered_roots(pendants)
+    roots = [principal] + [root for root in roots if root is not principal]
+    for root in roots:
         contour, absolute = layout_tree(root, children, step)
         trees.append((root, contour, absolute))
-    bottom_tops = [
-        min(contour) for root, contour, _ in trees if root not in forest.top_aligned
-    ]
-    top_row = min(bottom_tops) if bottom_tops else 0
+    secondary_bottom = min(trees[0][1]) - math.ceil(BLOCK_GAP / ROW_UNIT)
     placement = Placement()
     cursor = None
     for root, contour, absolute in trees:
-        row_shift = top_row - min(contour) if root in forest.top_aligned else 0
+        row_shift = 0 if root is principal else secondary_bottom
         shift = tree_shift(contour, cursor, step)
         right = max(bounds[1] for bounds in contour.values()) + shift
+        if root is principal and forest.loose_width:
+            left = min(bounds[0] for bounds in contour.values()) + shift
+            right = max(right, left + forest.loose_width)
         cursor = right + COLUMN_GAP + TREE_GAP_COLUMNS * step
         for key, (column, row) in absolute.items():
             placement.columns[key] = column + shift
@@ -899,7 +905,7 @@ def compute_placement(forest, hidden, grid):
     pendants = find_pendants(forest, children, hidden)
     pendant_nodes = [pendant for pendant, _ in pendants]
     placement = place_trees(forest, children, step, pendant_nodes)
-    anchor = forest.ordered_roots(pendant_nodes)[0]
+    anchor = main_output(forest)
     placement.anchor = anchor
     resolve_centers(placement, anchor, ROW_UNIT)
     collect_segments(placement, children)
@@ -1368,7 +1374,7 @@ def arrange_candidates(candidates, select_new_dots=False, replace_viewer=False):
     remove_dots(candidates)
     if not nodes:
         return backdrops + untouched
-    placed, anchor, chains, output = arrange(nodes, select_new_dots)
+    placed, anchor, chains, output, principal = arrange(nodes, select_new_dots)
     loose = set(node.fullName() for chain in chains for node in chain)
     records = [
         (record[0], [node for node in record[1] if node.fullName() not in loose])
@@ -1376,7 +1382,7 @@ def arrange_candidates(candidates, select_new_dots=False, replace_viewer=False):
         for record in records
     ]
     restored = restore_backdrops(records, placed, anchor)
-    grouped = place_loose(chains, placed, restored, select_new_dots)
+    grouped = place_loose(chains, principal, select_new_dots)
     if replace_viewer:
         untouched.append(replace_viewers(viewers, nodes[0].parent(), output))
     return placed + restored + grouped + untouched
@@ -1434,20 +1440,35 @@ def create_backdrop(context, label, color, select):
     return backdrop
 
 
-def layout_bounds(chains, placed, restored):
-    bounds = [node_bounds(node) for node in placed]
-    bounds += [backdrop_bounds(backdrop) for backdrop in restored]
-    if not bounds:
+def loose_group_width(chains):
+    columns = min(len(chains), LOOSE_PER_ROW)
+    pitch = max(chain_size(chain)[0] for chain in chains) + LOOSE_COLUMN_GAP
+    return columns * pitch - LOOSE_COLUMN_GAP + 2 * BACKDROP_PADDING
+
+
+def loose_groups_width(chains):
+    groups = [
+        [chain for chain in chains if (chain[0].Class() in READ_CLASSES) is is_input]
+        for _, _, is_input in LOOSE_GROUPS
+    ]
+    widths = [loose_group_width(group) for group in groups if group]
+    return sum(widths) + max(len(widths) - 1, 0) * BACKDROP_MARGIN * 2
+
+
+def layout_bounds(chains, principal):
+    if not principal:
         bounds = [node_bounds(node) for chain in chains for node in chain]
         return min(item[0] for item in bounds), max(item[3] for item in bounds)
-    top = min(item[1] for item in bounds) - BLOCK_GAP - BACKDROP_PADDING
-    return min(item[0] for item in bounds) + BACKDROP_PADDING, top
+    bounds = [node_bounds(node) for node in principal]
+    left = min(item[0] for item in bounds)
+    bottom = min(item[1] for item in bounds) - BLOCK_GAP - BACKDROP_PADDING
+    return left + BACKDROP_PADDING, bottom
 
 
-def place_loose(chains, placed, restored, select):
+def place_loose(chains, principal, select):
     if not chains:
         return []
-    left, bottom = layout_bounds(chains, placed, restored)
+    left, bottom = layout_bounds(chains, principal)
     context = chains[0][0].parent()
     grouped = []
     for label, color, is_input in LOOSE_GROUPS:
@@ -1473,11 +1494,15 @@ def arrange(nodes, select_new_dots=False):
     graph = Graph(nodes)
     chains = take_loose_chains(graph)
     if not graph.nodes:
-        return [], None, chains, None
-    forest = Forest(graph)
+        return [], None, chains, None, []
+    forest = Forest(graph, chains)
     placement, hidden = solve_layout(forest, grid_width())
     placed = apply_placement(placement, hidden, select_new_dots)
-    return placed, placement.anchor, chains, main_output(forest)
+    output = main_output(forest)
+    principal = []
+    for key in upstream_nodes(graph, output):
+        principal.extend(key.reads if isinstance(key, ReadStack) else [key])
+    return placed, placement.anchor, chains, output, principal
 
 
 def main():
