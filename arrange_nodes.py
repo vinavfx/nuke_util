@@ -105,6 +105,7 @@ class Graph(object):
         self.linked = set()
         self.generation_inputs = {}
         self.generation_roots = set()
+        self.principal = None
         for target in self.nodes:
             hidden = hides_inputs(target)
             for index in range(target.inputs()):
@@ -148,6 +149,7 @@ class Graph(object):
 class Forest(object):
     def __init__(self, graph, chains=()):
         self.loose_width = loose_groups_width(chains)
+        self.principal = graph.principal
         self.roots = [
             node
             for node in graph.nodes
@@ -166,7 +168,12 @@ class Forest(object):
         self.sizes = sizes
         claim_order = sorted(
             self.roots,
-            key=lambda root: (sizes[root], root.ypos(), root.fullName()),
+            key=lambda root: (
+                root is self.principal,
+                sizes[root],
+                root.ypos(),
+                root.fullName(),
+            ),
             reverse=True,
         )
         for root in claim_order:
@@ -178,6 +185,8 @@ class Forest(object):
             if root in graph.hidden_sources or root not in graph.linked
         )
         self.isolated = set(root for root in self.roots if root not in graph.linked)
+        output = main_output(self) if self.roots else None
+        self.principal_nodes = upstream_nodes(graph, output) if output else set()
 
     def claim_upstream(self, graph, root, claimed):
         stack = [(root, None, None)]
@@ -309,65 +318,32 @@ def generation_families(graph):
         yield gizmo, owner, reads
 
 
-def downstream_roots(graph, nodes):
-    roots = set()
-    visited = set(nodes)
-    pending = list(nodes)
-    while pending:
-        node = pending.pop()
-        if not graph.consumers[node]:
-            roots.add(node)
-        for target, _ in graph.consumers[node]:
-            if target not in visited:
-                visited.add(target)
-                pending.append(target)
-    return sorted(roots, key=position_key)
-
-
 def integrate_generation_branches(graph):
     if not graph.nodes:
         return
     principal = main_output(Forest(graph))
     families = list(generation_families(graph))
-    members = upstream_nodes(graph, principal)
     processed = set()
     while True:
+        members = upstream_nodes(graph, principal)
         added = False
-        for gizmo, owner, reads in families:
-            relatives = [gizmo, owner] + reads
-            if (
-                not reads
-                or gizmo in processed
-                or not any(node in members for node in relatives)
-            ):
-                continue
-            processed.add(gizmo)
-            added = True
-            roots = downstream_roots(graph, relatives)
+        for _, owner, reads in families:
             for read in reads:
-                inputs = [(GENERATION_INDEX, owner)]
-                inputs.extend(
-                    (VIRTUAL_INDEX, root)
-                    for root in roots
-                    if root is not owner
-                    and (root is not principal or read not in members)
-                )
-                graph.generation_inputs[read] = inputs
+                if read not in members or read in processed:
+                    continue
+                graph.generation_inputs[read] = [(GENERATION_INDEX, owner)]
                 link_cache[(owner, read)] = True
-            graph.generation_roots.update(roots)
-            for node in relatives + roots:
-                members.update(upstream_nodes(graph, node))
+                processed.add(read)
+                graph.principal = principal
+                added = True
         if not added:
-            if graph.generation_roots:
-                output = max(
-                    graph.generation_roots,
-                    key=lambda node: (
-                        upstream_count(graph, node),
-                        node.ypos(),
-                        node.fullName(),
-                    ),
-                )
-                graph.generation_roots.remove(output)
+            graph.generation_roots = {
+                node
+                for node in graph.nodes
+                if node is not principal
+                and node in members
+                and not graph.consumers[node]
+            }
             return
 
 
@@ -977,7 +953,11 @@ def find_pendants(forest, children, hidden):
         if root in forest.top_aligned or children.get(root):
             continue
         edges = [edge for edge in forest.cross_edges if edge[1] is root]
-        if len(edges) == 1 and edges[0] not in hidden:
+        if (
+            len(edges) == 1
+            and edges[0] not in hidden
+            and edges[0][0] not in forest.principal_nodes
+        ):
             pendants.append((root, edges[0]))
     return pendants
 
@@ -1545,6 +1525,8 @@ def replace_viewers(viewers, context, output):
 
 
 def main_output(forest):
+    if forest.principal is not None:
+        return forest.principal
     roots = [root for root in forest.roots if root not in forest.isolated]
     return max(
         roots or forest.roots,
