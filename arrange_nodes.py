@@ -1465,22 +1465,69 @@ def find_conflict(chosen, boxes, nodes):
             if rects_overlap(rect, expand(box, BACKDROP_MARGIN - 1)):
                 options = push_options(rect, box)
                 if options:
-                    return min(options)
+                    return min(options) + (box,)
     return None
 
 
 def push_nodes(nodes, conflict, step):
-    distance, axis, direction, cut = conflict
+    distance, axis, direction, cut, box = conflict
     unit = step if axis == 0 else ROW_UNIT
     offset = direction * math.ceil(distance / unit - 1e-9) * unit
+    shift = (offset, 0) if axis == 0 else (0, offset)
+    beyond = {}
     for node in nodes:
         rect = node_bounds(node)
-        center = (rect[axis] + rect[axis + 2]) / 2.0
-        if (center - cut) * direction > 0:
-            if axis == 0:
-                node.setXYpos(int(node.xpos() + offset), node.ypos())
-            else:
-                node.setXYpos(node.xpos(), int(node.ypos() + offset))
+        if ((rect[axis] + rect[axis + 2]) / 2.0 - cut) * direction > 0:
+            beyond[node.fullName()] = node
+    low = box[1 - axis] - BACKDROP_MARGIN
+    high = box[3 - axis] + BACKDROP_MARGIN
+    seeds = [
+        name
+        for name, node in beyond.items()
+        if node_bounds(node)[3 - axis] >= low and node_bounds(node)[1 - axis] <= high
+    ]
+    for name in pushed_sector(beyond, seeds, shift):
+        node = beyond[name]
+        node.setXYpos(int(node.xpos() + shift[0]), int(node.ypos() + shift[1]))
+
+
+def visible_links(nodes):
+    links = {name: set() for name in nodes}
+    for name, node in nodes.items():
+        if hides_inputs(node):
+            continue
+        for source in connected_inputs(node):
+            if source.fullName() in links:
+                links[name].add(source.fullName())
+                links[source.fullName()].add(name)
+    return links
+
+
+def shifted_bounds(node, shift):
+    left, top, right, bottom = node_bounds(node)
+    return left + shift[0], top + shift[1], right + shift[0], bottom + shift[1]
+
+
+def pushed_sector(nodes, seeds, shift):
+    links = visible_links(nodes)
+    sector = set()
+    pending = list(seeds)
+    while pending:
+        while pending:
+            name = pending.pop()
+            if name not in sector:
+                sector.add(name)
+                pending.extend(links[name] - sector)
+        moved = [
+            expand(shifted_bounds(nodes[name], shift), TIGHT_GAP) for name in sector
+        ]
+        pending = [
+            name
+            for name, node in nodes.items()
+            if name not in sector
+            and any(rects_overlap(node_bounds(node), rect) for rect in moved)
+        ]
+    return sector
 
 
 def restore_backdrops(records, nodes, anchor):
