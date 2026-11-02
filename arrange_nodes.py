@@ -34,6 +34,9 @@ BACKDROP_CLUSTER_GAP = 150.0
 BACKDROP_PADDING = 40
 BACKDROP_FONT = "Verdana"
 BACKDROP_FONT_SIZE = 20
+LABEL_FONT = '<font face="Bitstream Vera Sans" size={}>{}</font>'
+TITLE_FONT_SIZE = 4
+DESCRIPTION_FONT_SIZE = 1
 BACKDROP_MARGIN = 30
 GIZMO_KNOB = "comfyui_gizmo"
 GENERATION_SUFFIXES = ("Backup", "Restored")
@@ -1352,11 +1355,30 @@ def largest_cluster(nodes):
     return [nodes[index] for index in sorted(best)]
 
 
-def fitted_bounds(nodes, inner=()):
+def formatted_label(text):
+    if re.search(r"<font[^>]*size={}".format(TITLE_FONT_SIZE), text):
+        return text
+    plain = re.sub(r"<[^>]*>", "", text)
+    lines = [line.strip() for line in plain.splitlines() if line.strip()]
+    if not lines:
+        return ""
+    title = LABEL_FONT.format(TITLE_FONT_SIZE, lines[0])
+    if len(lines) == 1:
+        return title
+    description = "<i>{}</i>".format(" ".join(lines[1:]))
+    return title + "\n" + LABEL_FONT.format(DESCRIPTION_FONT_SIZE, description)
+
+
+def label_height(backdrop):
+    lines = formatted_label(backdrop["label"].value()).count("\n") + 1
+    return BACKDROP_FONT_SIZE * lines
+
+
+def fitted_bounds(nodes, inner=(), header=BACKDROP_FONT_SIZE):
     bounds = [node_bounds(node) for node in nodes] + list(inner)
     return (
         min(item[0] for item in bounds) - BACKDROP_PADDING,
-        min(item[1] for item in bounds) - BACKDROP_PADDING - BACKDROP_FONT_SIZE,
+        min(item[1] for item in bounds) - BACKDROP_PADDING - header,
         max(item[2] for item in bounds) + BACKDROP_PADDING,
         max(item[3] for item in bounds) + BACKDROP_PADDING,
     )
@@ -1372,17 +1394,17 @@ def total_overlap(bounds, placed):
     return sum(overlap_area(bounds, other) for other in placed)
 
 
-def without_overlap(nodes, placed):
+def without_overlap(nodes, placed, header):
     cluster = largest_cluster(nodes)
     while len(cluster) >= MIN_BACKDROP_NODES:
-        if not total_overlap(fitted_bounds(cluster), placed):
+        if not total_overlap(fitted_bounds(cluster, (), header), placed):
             return cluster
         candidates = [
             [node for node in cluster if node is not removed] for removed in cluster
         ]
         best = min(
             candidates,
-            key=lambda rest: total_overlap(fitted_bounds(rest), placed),
+            key=lambda rest: total_overlap(fitted_bounds(rest, (), header), placed),
         )
         cluster = largest_cluster(best)
     return []
@@ -1394,7 +1416,7 @@ def fit_backdrop(backdrop, bounds):
     backdrop["bdwidth"].setValue(int(right - left))
     backdrop["bdheight"].setValue(int(bottom - top))
     label = backdrop["label"]
-    label.setValue(re.sub(r"<[^>]*>", "", label.value()).strip())
+    label.setValue(formatted_label(label.value()))
     backdrop["note_font"].setValue(BACKDROP_FONT)
     backdrop["note_font_size"].setValue(BACKDROP_FONT_SIZE)
 
@@ -1407,12 +1429,13 @@ def choose_clusters(records):
     for record, cluster in clusters:
         backdrop, nested, inner = record[0], record[2], record[3]
         others = [bounds for key, bounds in placed.items() if key not in nested]
-        cluster = without_overlap(cluster, others)
+        header = label_height(backdrop)
+        cluster = without_overlap(cluster, others, header)
         if not cluster:
             nuke.delete(backdrop)
             continue
         children = [placed[key] for key in inner if key in placed]
-        placed[backdrop] = fitted_bounds(cluster, children)
+        placed[backdrop] = fitted_bounds(cluster, children, header)
         chosen.append((backdrop, cluster, [key for key in inner if key in placed]))
     return chosen
 
@@ -1420,7 +1443,8 @@ def choose_clusters(records):
 def fit_boxes(chosen):
     boxes = {}
     for backdrop, cluster, inner in chosen:
-        boxes[backdrop] = fitted_bounds(cluster, [boxes[key] for key in inner])
+        children = [boxes[key] for key in inner]
+        boxes[backdrop] = fitted_bounds(cluster, children, label_height(backdrop))
     return boxes
 
 

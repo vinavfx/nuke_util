@@ -31,7 +31,8 @@ por columnas incorporados ese día. No autoriza revertir esos cambios: cualquier
 - Registrar sus miembros antes de mover nodos. Después ajustar cada backdrop al mayor conjunto próximo de miembros originales; eliminarlo si
   quedan menos de dos. Distancia de agrupación: 150 px.
 - Respetar los anidados y apartar nodos ajenos cuando sea posible, desplazando sectores sin romper las alineaciones.
-- Unificar etiquetas sin HTML, fuente Verdana 20, margen interior de 40 px y separación exterior de 30 px.
+- Unificar etiquetas al formato de la skill `workflow-to-gizmo` (título `size=4` y descripción opcional `size=1` en cursiva, Bitstream Vera
+  Sans), fuente 20, margen interior de 40 px más una línea de cabecera por línea de etiqueta y separación exterior de 30 px.
 
 ## Relaciones y nodos sueltos
 
