@@ -21,6 +21,7 @@ ROW_UNIT = 26.0
 TIGHT_GAP = 6.0
 NORMAL_ROWS = 3
 FAN_INPUTS = 4
+UPWARD_NODE_LEAD = 10
 BLOCK_GAP = 150.0
 COLUMN_GAP = 20.0
 TREE_GAP_COLUMNS = 1
@@ -469,25 +470,42 @@ def choose_side(slots, balance, blocked, is_mask):
     return min(sides, key=lambda side: (balance[side], preference.index(side)))
 
 
-def assign_fan(items, blocked):
+def upward_child(primary, candidates, weights):
+    heaviest = max(candidates, key=lambda item: weights.get(item[1], 1))
+    lead = weights.get(heaviest[1], 1) - weights.get(primary[1], 1)
+    return heaviest[1] if lead >= UPWARD_NODE_LEAD else primary[1]
+
+
+def assign_fan(node, items, blocked, weights):
     slots = Slots()
     ordered = sorted(items, key=lambda item: item[0])
-    slots.fan_center = ordered[(len(ordered) - 1) // 2][1]
-    for side, (_, child) in zip((-1, 1), (ordered[0], ordered[-1])):
+    center = fan_center_item(node, ordered, weights)
+    rest = [item for item in ordered if item is not center]
+    for side, (_, child) in zip((-1, 1), (rest[0], rest[-1])):
         if side != blocked:
             slots.sides[side] = child
     used = list(slots.sides.values())
-    slots.fan = [
-        child for _, child in ordered if all(child is not item for item in used)
-    ]
+    slots.fan = [child for _, child in rest if all(child is not item for item in used)]
+    slots.fan.insert(len(slots.fan) // 2, center[1])
+    slots.fan_center = center[1]
     return slots
+
+
+def fan_center_item(node, ordered, weights):
+    middle = ordered[(len(ordered) - 1) // 2]
+    mask = mask_input_index(node)
+    candidates = [item for item in ordered if item[0] != mask]
+    heaviest = max(candidates, key=lambda item: weights.get(item[1], 1))
+    if weights.get(heaviest[1], 1) > weights.get(middle[1], 1):
+        return heaviest
+    return middle
 
 
 def assign_slots(node, items, blocked, balance, weights):
     inputs = [item for item in items if item[0] != STACK_INDEX]
     continuation = any(index == GENERATION_INDEX for index, _ in inputs)
     if len(inputs) >= FAN_INPUTS and not continuation:
-        slots = assign_fan(inputs, blocked)
+        slots = assign_fan(node, inputs, blocked, weights)
     else:
         slots = assign_inputs(node, inputs, blocked, balance, weights)
     slots.stacks = [child for index, child in items if index == STACK_INDEX]
@@ -505,7 +523,7 @@ def assign_inputs(node, items, blocked, balance, weights):
     if generation:
         slots.trunk = generation[0][1]
     elif primary:
-        slots.trunk = primary[0][1]
+        slots.trunk = upward_child(primary[0], candidates, weights)
     elif virtual:
         slots.trunk = virtual[0][1]
     elif candidates:
