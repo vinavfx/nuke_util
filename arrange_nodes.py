@@ -1503,6 +1503,7 @@ def push_nodes(nodes, conflict, step):
         rect = node_bounds(node)
         if ((rect[axis] + rect[axis + 2]) / 2.0 - cut) * direction > 0:
             beyond[node.fullName()] = node
+    add_virtual_partners(nodes, beyond)
     low = box[1 - axis] - BACKDROP_MARGIN
     high = box[3 - axis] + BACKDROP_MARGIN
     seeds = [
@@ -1524,7 +1525,37 @@ def visible_links(nodes):
             if source.fullName() in links:
                 links[name].add(source.fullName())
                 links[source.fullName()].add(name)
+    for name, partners in virtual_links(nodes).items():
+        links[name].update(partners)
     return links
+
+
+def virtual_links(nodes):
+    links = {name: set() for name in nodes}
+    for first, second in virtual_pairs(list(nodes.values())):
+        links[first.fullName()].add(second.fullName())
+        links[second.fullName()].add(first.fullName())
+    return links
+
+
+def add_virtual_partners(nodes, beyond):
+    by_name = {node.fullName(): node for node in nodes}
+    links = virtual_links(by_name)
+    pending = list(beyond)
+    while pending:
+        for partner in links[pending.pop()] - set(beyond):
+            beyond[partner] = by_name[partner]
+            pending.append(partner)
+
+
+def virtual_pairs(nodes):
+    pairs = list(related_pairs(nodes))
+    by_name = {node.fullName(): node for node in nodes}
+    for gizmo in [node for node in nodes if is_gizmo(node)]:
+        owner = by_name.get(gizmo.fullName() + "Read", gizmo)
+        reads = [node for node in nodes if is_generation_read(node, gizmo)]
+        pairs.extend((owner, read) for read in reads if read is not owner)
+    return pairs
 
 
 def shifted_bounds(node, shift):
