@@ -1463,18 +1463,23 @@ def expand(bounds, margin):
     return left - margin, top - margin, right + margin, bottom + margin
 
 
-def push_options(rect, box):
+def content_bounds(box, header):
+    left, top, right, bottom = expand(box, -BACKDROP_PADDING)
+    return left, top + header, right, bottom
+
+
+def push_options(rect, box, content):
     center_x = (rect[0] + rect[2]) / 2.0
     center_y = (rect[1] + rect[3]) / 2.0
     options = []
-    if center_x < box[0]:
-        options.append((rect[2] + BACKDROP_MARGIN - box[0], 0, -1, box[0]))
-    if center_x > box[2]:
-        options.append((box[2] + BACKDROP_MARGIN - rect[0], 0, 1, box[2]))
-    if center_y < box[1]:
-        options.append((rect[3] + BACKDROP_MARGIN - box[1], 1, -1, box[1]))
-    if center_y > box[3]:
-        options.append((box[3] + BACKDROP_MARGIN - rect[1], 1, 1, box[3]))
+    if center_x < content[0]:
+        options.append((rect[2] + BACKDROP_MARGIN - box[0], 0, -1, content[0]))
+    if center_x > content[2]:
+        options.append((box[2] + BACKDROP_MARGIN - rect[0], 0, 1, content[2]))
+    if center_y < content[1]:
+        options.append((rect[3] + BACKDROP_MARGIN - box[1], 1, -1, content[1]))
+    if center_y > content[3]:
+        options.append((box[3] + BACKDROP_MARGIN - rect[1], 1, 1, content[3]))
     return options
 
 
@@ -1482,28 +1487,44 @@ def find_conflict(chosen, boxes, nodes):
     owned = owned_nodes(chosen)
     for backdrop, _, _ in chosen:
         box = boxes[backdrop]
-        for node in nodes:
-            if node.fullName() in owned[backdrop]:
-                continue
+        content = content_bounds(box, label_height(backdrop))
+        free = [node for node in nodes if node.fullName() not in owned[backdrop]]
+        for node in free:
             rect = node_bounds(node)
             if rects_overlap(rect, expand(box, BACKDROP_MARGIN - 1)):
-                options = push_options(rect, box)
+                options = sorted(
+                    push_options(rect, box, content),
+                    key=lambda option: (splits_partners(free, option), option),
+                )
                 if options:
-                    return min(options) + (box,)
+                    return options[0] + (box, owned[backdrop])
     return None
 
 
-def push_nodes(nodes, conflict, step):
-    distance, axis, direction, cut, box = conflict
-    unit = step if axis == 0 else ROW_UNIT
-    offset = direction * math.ceil(distance / unit - 1e-9) * unit
-    shift = (offset, 0) if axis == 0 else (0, offset)
+def beyond_cut(nodes, axis, direction, cut):
     beyond = {}
     for node in nodes:
         rect = node_bounds(node)
         if ((rect[axis] + rect[axis + 2]) / 2.0 - cut) * direction > 0:
             beyond[node.fullName()] = node
-    add_virtual_partners(nodes, beyond)
+    return beyond
+
+
+def splits_partners(nodes, option):
+    beyond = beyond_cut(nodes, *option[1:])
+    pulled = dict(beyond)
+    add_virtual_partners(nodes, pulled)
+    return len(pulled) > len(beyond)
+
+
+def push_nodes(nodes, conflict, step):
+    distance, axis, direction, cut, box, members = conflict
+    unit = step if axis == 0 else ROW_UNIT
+    offset = direction * math.ceil(distance / unit - 1e-9) * unit
+    shift = (offset, 0) if axis == 0 else (0, offset)
+    free = [node for node in nodes if node.fullName() not in members]
+    beyond = beyond_cut(free, axis, direction, cut)
+    add_virtual_partners(free, beyond)
     low = box[1 - axis] - BACKDROP_MARGIN
     high = box[3 - axis] + BACKDROP_MARGIN
     seeds = [
