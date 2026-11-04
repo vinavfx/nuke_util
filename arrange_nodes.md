@@ -53,12 +53,16 @@ por columnas incorporados ese día. No autoriza revertir esos cambios: cualquier
 
 - Guardar los casos en `arrange_nodes_cases/`, como archivos `.nk` con un índice correlativo: `case_001.nk`, `case_002.nk`, etc. Usar el
   siguiente índice disponible, sin sobrescribir casos existentes.
-- Cuando el usuario pegue un grupo de nodos y pida guardarlo como caso, aligerar el flujo antes de guardarlo; no ordenarlo todavía.
+- Cuando el usuario pegue un grupo de nodos y pida guardarlo como caso, usar `save_arrange_case.py` para aligerarlo y guardarlo; no
+  ordenarlo todavía. El script acepta un archivo `.nk` o `-` para leer la entrada estándar, asigna el siguiente índice y no sobrescribe
+  casos. No requiere Nuke ni ejecuta los callbacks o las expresiones del flujo.
 - Conservar los nodos del nivel principal, sus posiciones y conexiones, para reproducir el caso de ordenado.
 - Vaciar el interior de todos los Groups, conservando únicamente sus nodos Input. Mantener los knobs de cada Group, incluidos los
   personalizados, y las conexiones externas a sus entradas.
 - Vaciar el knob `file` de todos los Reads que se conserven para evitar errores por rutas a archivos no disponibles.
 - Estos `.nk` son únicamente casos de ordenado: no necesitan procesar imágenes ni conservar el funcionamiento interno de los Groups.
+
+Desde este directorio: `python3 save_arrange_case.py /ruta/al/flujo.nk`. Para elegir otra carpeta de destino, usar `--output-dir`.
 
 ## Viewer e importación
 
