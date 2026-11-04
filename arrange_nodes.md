@@ -49,6 +49,17 @@ por columnas incorporados ese día. No autoriza revertir esos cambios: cualquier
   filas adicionales de Backups y Restored para alinear las salidas. Máximo diez cadenas por fila; 20 px entre columnas, 10 px entre nodos y
   40 px entre filas. Las cadenas mayores permanecen como workflows independientes.
 
+## Casos de ordenado
+
+- Guardar los casos en `arrange_nodes_cases/`, como archivos `.nk` con un índice correlativo: `case_001.nk`, `case_002.nk`, etc. Usar el
+  siguiente índice disponible, sin sobrescribir casos existentes.
+- Cuando el usuario pegue un grupo de nodos y pida guardarlo como caso, aligerar el flujo antes de guardarlo; no ordenarlo todavía.
+- Conservar los nodos del nivel principal, sus posiciones y conexiones, para reproducir el caso de ordenado.
+- Vaciar el interior de todos los Groups, conservando únicamente sus nodos Input. Mantener los knobs de cada Group, incluidos los
+  personalizados, y las conexiones externas a sus entradas.
+- Vaciar el knob `file` de todos los Reads que se conserven para evitar errores por rutas a archivos no disponibles.
+- Estos `.nk` son únicamente casos de ordenado: no necesitan procesar imágenes ni conservar el funcionamiento interno de los Groups.
+
 ## Viewer e importación
 
 - Reemplazar los Viewers solo al ordenar sin selección: crear uno debajo del output estimado del árbol principal. No reemplazarlos desde el
